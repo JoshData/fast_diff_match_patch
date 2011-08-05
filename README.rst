@@ -6,6 +6,7 @@ google-diff-match-patch is a Google library for computing differences between te
  http://code.google.com/p/google-diff-match-patch
  
 This project builds an extension module for Python using google-diff-match-patch's C++ implementation.
+Although google-diff-match-patch has a pure Python implementation, I have a need for speed.
 
 Build Prerequisites:
 
@@ -44,4 +45,12 @@ Usage:
 	if op == "+":
 		print "next", length, "characters are inserted"
 
+Options:
+
+	diff(left, right) takes an optional argument called timelimit which specifies
+	an upper bound on the amount of time to compute the diff, in seconds, or
+	give zero (the default) to work on the diff indefinitely.
+	
+	According to the Google docs, the diff will stop working after the time is
+	exceeded and will return a valid diff, but it might not be the best one.
 

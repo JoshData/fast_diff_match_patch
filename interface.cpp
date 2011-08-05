@@ -4,12 +4,16 @@
 #include "diff_match_patch.h"
 
 static PyObject *
-diff_match_patch_diff(PyObject *self, PyObject *args)
+diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     const char *a, *b;
+    float timelimit = 0.0;
+    
+    static char *kwlist[] = { "left_document", "right_document", "timelimit", NULL };
 
-    if (!PyArg_ParseTuple(args, "ss", &a, &b))
-        return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|f", kwlist,
+                                     &a, &b, &timelimit))
+    return NULL;
     
     PyObject *ret = PyList_New(0);
     
@@ -19,6 +23,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args)
     opcodes[EQUAL] = PyString_FromString("=");
     
     diff_match_patch dmp = diff_match_patch();
+    dmp.Diff_Timeout = timelimit;
     QList<Diff> diff = dmp.diff_main(QString(a), QString(b));
     foreach(Diff entry, diff) {
 		PyObject* tuple = PyTuple_New(2);
@@ -31,7 +36,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef SpamMethods[] = {
-    {"diff", diff_match_patch_diff, METH_VARARGS,
+    {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
