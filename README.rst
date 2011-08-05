@@ -7,9 +7,25 @@ google-diff-match-patch is a Google library for computing differences between te
  
 This project builds an extension module for Python using google-diff-match-patch's C++ implementation.
 
+Build Prerequisites:
+
+	Python development headers
+		Debian package: python-dev
+
+	Qt 4 development libraries (data structures used by google-diff-match-patch)
+ 		Debian package: libqt4-dev
+
+Runtime Prerequisitves:
+
+	Qt 4 Core
+		Debian package: libqtcore4
+ 		
 Build:
 
  python setup.py install
+ 
+ Or you may find pre-built binaries stored in the git repository in the build directory.
+ Your mileage may vary with these depending on whether your system is compatible.
 
 Usage:
 
