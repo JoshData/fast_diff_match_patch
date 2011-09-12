@@ -8,11 +8,13 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     const char *a, *b;
     float timelimit = 0.0;
-    
-    static char *kwlist[] = { "left_document", "right_document", "timelimit", NULL };
+    int checklines = 1;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|f", kwlist,
-                                     &a, &b, &timelimit))
+    
+    static char *kwlist[] = { "left_document", "right_document", "timelimit", "checklines", NULL };
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|fb", kwlist,
+                                     &a, &b, &timelimit, &checklines))
     return NULL;
     
     PyObject *ret = PyList_New(0);
@@ -24,7 +26,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     
     diff_match_patch dmp = diff_match_patch();
     dmp.Diff_Timeout = timelimit;
-    QList<Diff> diff = dmp.diff_main(QString(a), QString(b));
+    QList<Diff> diff = dmp.diff_main(QString(a), QString(b), checklines);
     foreach(Diff entry, diff) {
 		PyObject* tuple = PyTuple_New(2);
 		PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
