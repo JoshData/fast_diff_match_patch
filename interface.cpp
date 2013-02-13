@@ -37,7 +37,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
-static PyMethodDef SpamMethods[] = {
+static PyMethodDef MyMethods[] = {
     {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -46,6 +46,6 @@ static PyMethodDef SpamMethods[] = {
 PyMODINIT_FUNC
 initdiff_match_patch(void)
 {
-    (void) Py_InitModule("diff_match_patch", SpamMethods);
+    (void) Py_InitModule("diff_match_patch", MyMethods);
 }
 

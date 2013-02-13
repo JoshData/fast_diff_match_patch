@@ -32,8 +32,8 @@ Build the binary module using::
 Or you may find pre-built binaries stored in the git repository in the build directory.
 Your mileage may vary with these depending on whether your system is compatible.
 
-Usage
------
+Example
+-------
 
 Example usage::
 
@@ -55,10 +55,17 @@ Example usage::
 Options
 -------
 
-diff(left, right) takes an optional argument called timelimit which specifies
-an upper bound on the amount of time to compute the diff, in seconds, or
-give zero (the default) to work on the diff indefinitely.
-	
-According to the Google docs, the diff will stop working after the time is
-exceeded and will return a valid diff, but it might not be the best one.
+op_list = diff_match_patch.diff(left_text, right_text[, timelimit=0][, checklines=False])
+
+left_text and right_text are strings (if Unicode, the string is converted
+to a str using the default encoding).
+
+The optional timelimit specifies an upper bound on the amount of time
+to compute the diff, in seconds, or zero (the default) to work on the
+diff indefinitely. According to the Google docs, the diff will stop
+working after the time is exceeded and will return a valid diff, but
+it might not be the best one.
+
+If checklines is True, the diff will do line-by-line comparisons first.
+
 

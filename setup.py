@@ -7,7 +7,7 @@ module1 = Extension('diff_match_patch',
 
 setup (name = 'diff_match_patch',
        version = '1.0',
-       description = 'This is a Python extension module for Google\'s diff_match_patch CPP module.',
+       description = 'This is a Python extension module that wraps Google\'s diff_match_patch C++ port.',
        author = 'Joshua Tauberer',
        ext_modules = [module1])
 
