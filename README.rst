@@ -1,5 +1,6 @@
 =============================================================================
-diff_match_patch extension module for Python based on google-diff-match-patch
+diff_match_patch
+Python module based on google-diff-match-patch's C++ port
 =============================================================================
 
 google-diff-match-patch is a Google library for computing differences between text files:
@@ -55,7 +56,7 @@ Example usage::
 Options
 -------
 
-op_list = diff_match_patch.diff(left_text, right_text[, timelimit=0][, checklines=False])
+op_list = diff_match_patch.diff(left_text, right_text[, timelimit=0][, checklines=False][, counts_only=True])
 
 left_text and right_text are strings (if Unicode, the string is converted
 to a str using the default encoding).
@@ -68,4 +69,7 @@ it might not be the best one.
 
 If checklines is True, the diff will do line-by-line comparisons first.
 
+If counts_only is False, then instead of returning tuples of (op, length),
+return tuples of (op, text) that gives the text needed to re-create
+right_text from left_text.
 

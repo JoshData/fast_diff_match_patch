@@ -9,12 +9,12 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     const char *a, *b;
     float timelimit = 0.0;
     int checklines = 1;
-
+    int counts_only = 1;
     
-    static char *kwlist[] = { "left_document", "right_document", "timelimit", "checklines", NULL };
+    static char *kwlist[] = { "left_document", "right_document", "timelimit", "checklines", "counts_only", NULL };
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|fb", kwlist,
-                                     &a, &b, &timelimit, &checklines))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|fbb", kwlist,
+                                     &a, &b, &timelimit, &checklines, &counts_only))
     return NULL;
     
     PyObject *ret = PyList_New(0);
@@ -30,7 +30,10 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     foreach(Diff entry, diff) {
 		PyObject* tuple = PyTuple_New(2);
 		PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
-		PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
+		if (counts_only)
+			PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
+		else
+			PyTuple_SetItem(tuple, 1, PyString_FromString(entry.text.toLocal8Bit().constData()));
     	PyList_Append(ret, tuple);
     }
     
