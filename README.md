@@ -23,9 +23,10 @@ can call into the native library easily.
 Dependencies
 ------------
 
-Build Prerequisites:
+You will need:
 
-* Python development headers (Debian package python-dev)
+* Python development headers (Debian package `python-dev`)
+* The diff-match-patch library, which you can clone using `git submodule update --init`.
  		
 Build
 -----
@@ -42,14 +43,14 @@ Example
 
 Example usage::
 
- import diff_match_patch
- 
- left_text = u"this is a test"
- right_text = u"this is not a test"
- 
- diff = diff_match_patch.diff_unicode(left_text, right_text)
- 
- for op, length in diff:
+	import diff_match_patch
+
+	left_text = u"this is a test"
+	right_text = u"this is not a test"
+
+	diff = diff_match_patch.diff_unicode(left_text, right_text)
+
+	for op, length in diff:
 	if op == "-":
 		print "next", length, "characters are deleted"
 	if op == "=":
