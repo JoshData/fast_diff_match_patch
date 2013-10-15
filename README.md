@@ -1,14 +1,23 @@
 =============================================================================
 diff_match_patch
-Python module based on google-diff-match-patch's C++ port
+Python module based on google-diff-match-patch's C++ version
+as rewritten by @leutloff at https://github.com/leutloff/diff-match-patch-cpp-stl
+which removes the Qt dependency
 =============================================================================
 
 google-diff-match-patch is a Google library for computing differences between text files:
 
  http://code.google.com/p/google-diff-match-patch
+
+Thare are implementations in various languages. Although there is a Python port, it's slow
+on very large documents and I have a need for speed. So I wanted to use the C++ port. But
+@leutloff determined that the C++ port could be even faster by replacing the Qt 4 dependency
+with the standard C++ library primitives. So he rewrote the module:
+
+ https://github.com/leutloff/diff-match-patch-cpp-stl to be faster
  
-This project builds an extension module for Python using google-diff-match-patch's C++ implementation.
-Although google-diff-match-patch has a pure Python implementation, I have a need for speed.
+This project builds an extension module for Python using @leutloff's library so Python code
+can call into the native library easily.
 
 Dependencies
 ------------
@@ -16,12 +25,6 @@ Dependencies
 Build Prerequisites:
 
 * Python development headers (Debian package python-dev)
-
-* Qt 4 development libraries (Debian package: libqt4-dev)
-
-Runtime Prerequisitves:
-
-* Qt 4 Core (Debian package: libqtcore4)
  		
 Build
 -----
@@ -40,10 +43,10 @@ Example usage::
 
  import diff_match_patch
  
- left_text = "this is a test"
- right_text = "this is not a test"
+ left_text = u"this is a test"
+ right_text = u"this is not a test"
  
- diff = diff_match_patch.diff(left_text, right_text)
+ diff = diff_match_patch.diff_unicode(left_text, right_text)
  
  for op, length in diff:
 	if op == "-":
@@ -53,13 +56,14 @@ Example usage::
 	if op == "+":
 		print "next", length, "characters are inserted"
 
+There is also a diff_str function that accepts str instances.
+
 Options
 -------
 
-op_list = diff_match_patch.diff(left_text, right_text[, timelimit=0][, checklines=False][, counts_only=True])
+op_list = diff_match_patch.diff_{unicode,str}(left_text, right_text[, timelimit=0][, checklines=False][, counts_only=True])
 
-left_text and right_text are strings (if Unicode, the string is converted
-to a str using the default encoding).
+left_text and right_text are strings (unicode or str as appropriate).
 
 The optional timelimit specifies an upper bound on the amount of time
 to compute the diff, in seconds, or zero (the default) to work on the

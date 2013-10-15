@@ -1,0 +1,3 @@
+[submodule "diff-match-patch-cpp-stl"]
+	path = diff-match-patch-cpp-stl
+	url = https://github.com/leutloff/diff-match-patch-cpp-stl

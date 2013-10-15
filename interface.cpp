@@ -1,39 +1,47 @@
 #include <Python.h>
-#include <QtCore>
 
-#include "diff_match_patch.h"
+#include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
+template <class STORAGE_TYPE, char FMTSPEC, class CPPTYPE, class PYTYPE>
 static PyObject *
 diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    const char *a, *b;
+    STORAGE_TYPE *a, *b;
     float timelimit = 0.0;
     int checklines = 1;
     int counts_only = 1;
-    
-    static char *kwlist[] = { "left_document", "right_document", "timelimit", "checklines", "counts_only", NULL };
+    char format_spec[7];
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|fbb", kwlist,
+    static char *kwlist[] = { strdup("left_document"), strdup("right_document"), strdup("timelimit"), strdup("checklines"), strdup("counts_only"), NULL };
+
+    sprintf(format_spec, "%c%c|fbb", FMTSPEC, FMTSPEC);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b, &timelimit, &checklines, &counts_only))
-    return NULL;
+        return NULL;
     
     PyObject *ret = PyList_New(0);
     
+    typedef diff_match_patch<CPPTYPE> DMP;
+    DMP dmp;
+
     PyObject *opcodes[3];
-    opcodes[DELETE] = PyString_FromString("-");
-    opcodes[INSERT] = PyString_FromString("+");
-    opcodes[EQUAL] = PyString_FromString("=");
+    opcodes[dmp.DELETE] = PyString_FromString("-");
+    opcodes[dmp.INSERT] = PyString_FromString("+");
+    opcodes[dmp.EQUAL] = PyString_FromString("=");
     
-    diff_match_patch dmp = diff_match_patch();
     dmp.Diff_Timeout = timelimit;
-    QList<Diff> diff = dmp.diff_main(QString(a), QString(b), checklines);
-    foreach(Diff entry, diff) {
+    typename DMP::Diffs diff = dmp.diff_main(a, b, checklines);
+    typename std::list<typename DMP::Diff>::const_iterator entryiter;
+    for (entryiter = diff.begin(); entryiter != diff.end(); entryiter++) {
+        typename DMP::Diff entry = *entryiter;
 		PyObject* tuple = PyTuple_New(2);
 		PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
 		if (counts_only)
 			PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
+        else if (FMTSPEC == 'u')
+            PyTuple_SetItem(tuple, 1, PyUnicode_FromUnicode((Py_UNICODE*)entry.text.data(), entry.text.size()));
 		else
-			PyTuple_SetItem(tuple, 1, PyString_FromString(entry.text.toLocal8Bit().constData()));
+			PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
     	PyList_Append(ret, tuple);
     }
     
@@ -41,8 +49,10 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 static PyMethodDef MyMethods[] = {
-    {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
+    {"diff_unicode", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
+    {"diff_str", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const char, 's', std::string, char*>, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two (regular) strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
