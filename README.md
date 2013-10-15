@@ -1,9 +1,10 @@
+diff_match_patch-python
 =============================================================================
-diff_match_patch
-Python module based on google-diff-match-patch's C++ version
-as rewritten by @leutloff at https://github.com/leutloff/diff-match-patch-cpp-stl
-which removes the Qt dependency
-=============================================================================
+
+Python module based on google-diff-match-patch's C++ version as rewritten by @leutloff at
+https://github.com/leutloff/diff-match-patch-cpp-stl which removes the Qt dependency.
+
+So...
 
 google-diff-match-patch is a Google library for computing differences between text files:
 
