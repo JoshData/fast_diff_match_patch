@@ -35,19 +35,19 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     for (entryiter = diff.begin(); entryiter != diff.end(); entryiter++) {
         typename DMP::Diff entry = *entryiter;
 
-		PyObject* tuple = PyTuple_New(2);
+        PyObject* tuple = PyTuple_New(2);
 
         Py_INCREF(opcodes[entry.operation]); // we're going to reuse the object, so don't let SetItem steal the reference
-		PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
+        PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
 
-		if (counts_only)
-			PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
+        if (counts_only)
+            PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
         else if (FMTSPEC == 'u')
             PyTuple_SetItem(tuple, 1, PyUnicode_FromUnicode((Py_UNICODE*)entry.text.data(), entry.text.size()));
-		else
-			PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
+        else
+            PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
 
-    	PyList_Append(ret, tuple);
+        PyList_Append(ret, tuple);
         Py_DECREF(tuple); // the list owns a reference now
     }
 
