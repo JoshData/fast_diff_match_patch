@@ -2,6 +2,12 @@
 
 #include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
+#if PY_MAJOR_VERSION == 3
+    // Upgrade these types.
+    #define PyString_FromString PyUnicode_FromString
+    #define PyInt_FromLong PyLong_FromLong
+#endif
+
 template <class STORAGE_TYPE, char FMTSPEC, class CPPTYPE, class PYTYPE>
 static PyObject *
 diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -44,8 +50,10 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
             PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
         else if (FMTSPEC == 'u')
             PyTuple_SetItem(tuple, 1, PyUnicode_FromUnicode((Py_UNICODE*)entry.text.data(), entry.text.size()));
+        #if PY_MAJOR_VERSION == 2
         else
             PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
+        #endif
 
         PyList_Append(ret, tuple);
         Py_DECREF(tuple); // the list owns a reference now
@@ -59,6 +67,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
+#if PY_MAJOR_VERSION == 2
 static PyMethodDef MyMethods[] = {
     {"diff_unicode", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
@@ -72,4 +81,27 @@ initdiff_match_patch(void)
 {
     (void) Py_InitModule("diff_match_patch", MyMethods);
 }
+#endif
 
+#if PY_MAJOR_VERSION == 3
+static PyMethodDef MyMethods[] = {
+    {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+static struct PyModuleDef mymodule = {
+   PyModuleDef_HEAD_INIT,
+   "diff_match_patch",   /* name of module */
+   NULL, /* module documentation, may be NULL */
+   -1,       /* size of per-interpreter state of the module,
+                or -1 if the module keeps state in global variables. */
+   MyMethods
+};
+
+PyMODINIT_FUNC
+PyInit_diff_match_patch(void)
+{
+    return PyModule_Create(&mymodule);
+}
+#endif
