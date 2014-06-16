@@ -5,6 +5,7 @@
 #if PY_MAJOR_VERSION == 3
     // Upgrade these types.
     #define PyString_FromString PyUnicode_FromString
+    #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
     #define PyInt_FromLong PyLong_FromLong
 #endif
 
@@ -50,10 +51,8 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
             PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
         else if (FMTSPEC == 'u')
             PyTuple_SetItem(tuple, 1, PyUnicode_FromUnicode((Py_UNICODE*)entry.text.data(), entry.text.size()));
-        #if PY_MAJOR_VERSION == 2
         else
             PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
-        #endif
 
         PyList_Append(ret, tuple);
         Py_DECREF(tuple); // the list owns a reference now
@@ -87,6 +86,8 @@ initdiff_match_patch(void)
 static PyMethodDef MyMethods[] = {
     {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
+    {"diff_bytes", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const char, 'y', std::string, char*>, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two byte strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
