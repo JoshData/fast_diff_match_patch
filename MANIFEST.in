@@ -1,2 +1,2 @@
-include *.h
-
+include interface.cpp diff-match-patch-cpp-stl/diff_match_patch.h
+include LICENSE README.rst
