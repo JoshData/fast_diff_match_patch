@@ -16,14 +16,24 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     STORAGE_TYPE *a, *b;
     float timelimit = 0.0;
     int checklines = 1;
+    int cleanupSemantic = 1;
     int counts_only = 1;
-    char format_spec[7];
+    char format_spec[64];
 
-    static char *kwlist[] = { strdup("left_document"), strdup("right_document"), strdup("timelimit"), strdup("checklines"), strdup("counts_only"), NULL };
+    static char *kwlist[] = {
+        strdup("left_document"),
+        strdup("right_document"),
+        strdup("timelimit"),
+        strdup("checklines"),
+        strdup("cleanup_semantic"),
+        strdup("counts_only"),
+        NULL };
 
-    sprintf(format_spec, "%c%c|fbb", FMTSPEC, FMTSPEC);
+    sprintf(format_spec, "%c%c|fbbb", FMTSPEC, FMTSPEC);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
-                                     &a, &b, &timelimit, &checklines, &counts_only))
+                                     &a, &b,
+                                     &timelimit, &checklines, &cleanupSemantic,
+                                     &counts_only))
         return NULL;
     
     PyObject *ret = PyList_New(0);
@@ -38,6 +48,10 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     
     dmp.Diff_Timeout = timelimit;
     typename DMP::Diffs diff = dmp.diff_main(a, b, checklines);
+
+    if (cleanupSemantic)
+        dmp.diff_cleanupSemantic(diff);
+
     typename std::list<typename DMP::Diff>::const_iterator entryiter;
     for (entryiter = diff.begin(); entryiter != diff.end(); entryiter++) {
         typename DMP::Diff entry = *entryiter;

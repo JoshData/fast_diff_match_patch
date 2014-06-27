@@ -8,30 +8,24 @@ else:
 	diff = diff_match_patch.diff_unicode
 	diff_bytes = diff_match_patch.diff_str
 
-left_text = u"this is a test"
-right_text = u"this is not \u2192 a test"
+def test(text1, text2, diff_function):
+	print(diff_function.__name__)
+	print("-" * len(diff_function.__name__))
+	print ("<", repr(text1))
+	print (">", repr(text2))
+	print()
+	changes = diff_function(
+		text1, text2,
+		timelimit=15,
+		checklines=False,
+		cleanup_semantic=True,
+		counts_only=False)
 
-changes = diff(left_text, right_text, timelimit=15, checklines=False)
+	for op, text in changes:
+		print(op, repr(text))
 
-for op, length in changes:
-	if op == "-":
-		print ("next", length, "characters are deleted")
-	if op == "=":
-		print ("next", length, "characters are in common")
-	if op == "+":
-		print ("next", length, "characters are inserted")
+	print ("")
+
+test(u"this is a test", u"this program is not \u2192 a test", diff)
+test(b"this is a test", b"this program is not ==> a test", diff_bytes)
 	
-print ("============")
-
-left_text = b"this is a test"
-right_text = b"this is not-> a test"
-
-changes = diff_bytes(left_text, right_text, timelimit=15, checklines=False)
-
-for op, length in changes:
-	if op == "-":
-		print ("next", length, "bytes are deleted")
-	if op == "=":
-		print ("next", length, "bytes are in common")
-	if op == "+":
-		print ("next", length, "bytes are inserted")
