@@ -14,6 +14,10 @@ def test(text1, text2, diff_function):
 	print ("<", repr(text1))
 	print (">", repr(text2))
 	print()
+
+	print (diff_function(text1, text2, checklines=False, cleanup_semantic=True, as_patch=True))
+	print()
+
 	changes = diff_function(
 		text1, text2,
 		timelimit=15,
