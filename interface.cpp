@@ -92,11 +92,23 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
+static PyObject *
+diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>(self, args, kwargs);
+}
+
 #if PY_MAJOR_VERSION == 2
+static PyObject *
+diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_diff<const char, 's', std::string, char*>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
-    {"diff_unicode", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
+    {"diff_unicode", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
-    {"diff_str", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const char, 's', std::string, char*>, METH_VARARGS|METH_KEYWORDS,
+    {"diff_str", (PyCFunction)diff_match_patch_diff_str, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two (regular) strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -109,10 +121,16 @@ initdiff_match_patch(void)
 #endif
 
 #if PY_MAJOR_VERSION == 3
+static PyObject *
+diff_match_patch_diff_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_diff<const char, 'y', std::string, char*>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
-    {"diff", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>, METH_VARARGS|METH_KEYWORDS,
+    {"diff", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
-    {"diff_bytes", (PyObject* (*)(PyObject*, PyObject*))diff_match_patch_diff<const char, 'y', std::string, char*>, METH_VARARGS|METH_KEYWORDS,
+    {"diff_bytes", (PyCFunction)diff_match_patch_diff_bytes, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two byte strings. Returns a list of tuples (OP, LEN)."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
