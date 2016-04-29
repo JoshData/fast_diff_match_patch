@@ -9,7 +9,7 @@
     #define PyInt_FromLong PyLong_FromLong
 #endif
 
-template <class STORAGE_TYPE, char FMTSPEC, class CPPTYPE, class PYTYPE>
+template <class STORAGE_TYPE, char FMTSPEC, class CPPTYPE>
 static PyObject *
 diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -95,14 +95,14 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyObject *
 diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_diff<const wchar_t, 'u', std::wstring, Py_UNICODE>(self, args, kwargs);
+    return diff_match_patch_diff<const wchar_t, 'u', std::wstring>(self, args, kwargs);
 }
 
 #if PY_MAJOR_VERSION == 2
 static PyObject *
 diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_diff<const char, 's', std::string, char*>(self, args, kwargs);
+    return diff_match_patch_diff<const char, 's', std::string>(self, args, kwargs);
 }
 
 static PyMethodDef MyMethods[] = {
