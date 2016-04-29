@@ -9,11 +9,39 @@
     #define PyInt_FromLong PyLong_FromLong
 #endif
 
-template <class STORAGE_TYPE, char FMTSPEC, class CPPTYPE>
+// template traits class
+template <char FMTSPEC>
+struct call_traits {
+};
+
+// Python 2 string
+template <>
+struct call_traits<'s'> {
+    typedef char* PY_STRING_STORAGE;
+    typedef std::string STL_STRING_TYPE;
+};
+
+// Python 3 bytes
+template <>
+struct call_traits<'y'> {
+    typedef char* PY_STRING_STORAGE;
+    typedef std::string STL_STRING_TYPE;
+};
+
+// Python 2/3 unicode
+template <>
+struct call_traits<'u'> {
+    typedef wchar_t* PY_STRING_STORAGE;
+    typedef std::wstring STL_STRING_TYPE;
+};
+
+// actual function
+template <char FMTSPEC>
 static PyObject *
 diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    STORAGE_TYPE *a, *b;
+    typedef call_traits<FMTSPEC> traits;
+    typename traits::PY_STRING_STORAGE a, b;
     float timelimit = 0.0;
     int checklines = 1;
     int cleanupSemantic = 1;
@@ -40,7 +68,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     
     PyObject *ret = PyList_New(0);
     
-    typedef diff_match_patch<CPPTYPE> DMP;
+    typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
     DMP dmp;
 
     PyObject *opcodes[3];
@@ -56,7 +84,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 
     if (as_patch) {
         typename DMP::Patches patch = dmp.patch_make(a, diff);
-        CPPTYPE patch_str = dmp.patch_toText(patch);
+        typename traits::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
 
         if (FMTSPEC == 'u')
             return PyUnicode_FromUnicode((Py_UNICODE*)patch_str.data(), patch_str.size());
@@ -95,14 +123,14 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyObject *
 diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_diff<const wchar_t, 'u', std::wstring>(self, args, kwargs);
+    return diff_match_patch_diff<'u'>(self, args, kwargs);
 }
 
 #if PY_MAJOR_VERSION == 2
 static PyObject *
 diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_diff<const char, 's', std::string>(self, args, kwargs);
+    return diff_match_patch_diff<'s'>(self, args, kwargs);
 }
 
 static PyMethodDef MyMethods[] = {
@@ -124,7 +152,7 @@ initdiff_match_patch(void)
 static PyObject *
 diff_match_patch_diff_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_diff<const char, 'y', std::string, char*>(self, args, kwargs);
+    return diff_match_patch_diff<'y'>(self, args, kwargs);
 }
 
 static PyMethodDef MyMethods[] = {
