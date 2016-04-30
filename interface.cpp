@@ -17,22 +17,62 @@ struct call_traits {
 // Python 2 string
 template <>
 struct call_traits<'s'> {
+    // PyArg_ParseTuple for 's' gives a 'char*', and we'll
+    // convert that to a std::string using a cast operator.
     typedef char* PY_STRING_STORAGE;
     typedef std::string STL_STRING_TYPE;
+
+    // Use the operator cast to convert char*s to std::strings.
+    static std::string convert(char* value) { return (std::string)value; }
 };
 
 // Python 3 bytes
 template <>
 struct call_traits<'y'> {
+    // PyArg_ParseTuple for 'y' gives a 'char*', and we'll
+    // convert that to a std::string using a cast operator.
     typedef char* PY_STRING_STORAGE;
     typedef std::string STL_STRING_TYPE;
+
+    // Use the operator cast to convert char*s to std::strings.
+    static std::string convert(char* value) { return (std::string)value; }
 };
 
 // Python 2/3 unicode
 template <>
 struct call_traits<'u'> {
-    typedef wchar_t* PY_STRING_STORAGE;
+    // PyArg_ParseTuple for 'u' gives a 'Py_UNICODE*'. That's a
+    // typedef for wchar_t, unsigned short (UCS2) or unsigned long (UCS4).
+    // On Ubuntu, it seems to be a typedef for wchar_t.
+    // On Macs, the default build has it as a typedef for UCS2 (a "narrow" build).
+    // With Python 3.3 and forward, it is always a typedef for wchar_t.
+    typedef Py_UNICODE* PY_STRING_STORAGE;
     typedef std::wstring STL_STRING_TYPE;
+
+    // Convert Py_UNICODE* to std::wstring....
+    static std::wstring convert(Py_UNICODE* value) {
+        // If Py_UNICODE is the same width as wchar_t, then just do a few casts.
+        // Hopefully wchar_t is unsigned, but it may not matter anyway. When
+        // Py_UNICODE actually *is* wchar_t, the casts are unnecessary, but we
+        // want this to compile in other environments as well.
+        if (sizeof(Py_UNICODE) == sizeof(wchar_t))
+            return (std::wstring)(wchar_t*)value;
+
+        // In other cases, I'm not sure how to safely convert besides
+        // kind of doing it manually: Find the length of the string by
+        // finding its NULL-terminating character, allocate a buffer of
+        // wchar_t's, cast each character to wchar_t, etc.
+        size_t len = 0;
+        while (value[len] != 0)
+            len++;
+        wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * len);
+        assert(buf);
+        for (size_t i = 0; i < len; i++)
+            buf[i] = (wchar_t)value[i];
+        std::wstring ret = (std::wstring)buf;
+        free(buf);
+        return ret;
+    }
 };
 
 // actual function
@@ -77,13 +117,13 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     opcodes[dmp.EQUAL] = PyString_FromString("=");
     
     dmp.Diff_Timeout = timelimit;
-    typename DMP::Diffs diff = dmp.diff_main(a, b, checklines);
+    typename DMP::Diffs diff = dmp.diff_main(traits::convert(a), traits::convert(b), checklines);
 
     if (cleanupSemantic)
         dmp.diff_cleanupSemantic(diff);
 
     if (as_patch) {
-        typename DMP::Patches patch = dmp.patch_make(a, diff);
+        typename DMP::Patches patch = dmp.patch_make(traits::convert(a), diff);
         typename traits::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
 
         if (FMTSPEC == 'u')
