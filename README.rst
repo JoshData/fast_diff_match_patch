@@ -5,9 +5,9 @@ A Python extension module that wraps google-diff-match-patch's C++ implementatio
 
 google-diff-match-patch is a Google library for computing differences between text files (<http://code.google.com/p/google-diff-match-patch>). Thare are implementations in various languages. Although there is a Python port, it's slow on very large documents, and I have a need for speed. I wanted to use the C++ implementation, but I'm a Python guy so I'd prefer to use it from Python.
 
-@leutloff determined that the C++ port could be even faster by replacing the Qt 4 dependency with the standard C++ library primitives. So he rewrote the module at <https://github.com/leutloff/diff-match-patch-cpp-stl>.
+Google's library depends on Qt 4, so some other folks rewrote it using the standard C++ library classes instead, making it more portable. That's at <https://github.com/leutloff/diff-match-patch-cpp-stl>.
  
-This project is an extension module for Python using @leutloff's library so Python code
+This project is a Python extension module for the C++ STL port so Python code
 can call into the native library easily. It works in both Python 2 and Python 3.
 
 Example
@@ -37,22 +37,29 @@ The ``timelimit`` argument is the maximum running time in seconds if you want to
 
 The diff methods also take a ``counts_only`` argument which is ``True`` by default. Set it to ``False`` to have the returned value be an array of tuples of operations and corresponding strings rather than operations and the lengths of those strings.
 
-Dependencies
-------------
+Building from source
+--------------------
 
-To build from source, you will need:
+To build from these sources, you will need:
 
 * Python development headers (Debian package ``python-dev``)
 * The diff-match-patch library, which you can clone using ``git submodule update --init``.
  		
-Build
------
-
-Build the binary module using::
+Then build the binary module using::
 
  python setup.py install
  
 Or you may find pre-built binaries stored in the git repository in the build directory.
 Your mileage may vary with these depending on whether your system is compatible.
 
+For package maintainers
+-----------------------
 
+To build everything::
+
+ git submodule update && rm -rf build && python setup.py build && python3 setup.py build
+
+And to test without installing::
+
+ PYTHONPATH=build/lib.linux-x86_64-2.7/ python test.py
+ PYTHONPATH=build/lib.linux-x86_64-3.4/ python3 test.py
