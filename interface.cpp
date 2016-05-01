@@ -23,7 +23,12 @@ struct call_traits<'s'> {
     typedef std::string STL_STRING_TYPE;
 
     // Use the operator cast to convert char*s to std::strings.
-    static std::string convert(char* value) { return (std::string)value; }
+    static std::string to_string(char* value) { return (std::string)value; }
+
+    // Create PyString from underlying char array
+    static PyObject* from_string(std::string& value) { 
+        return PyString_FromStringAndSize(value.data(), value.size());
+    }
 };
 
 // Python 3 bytes
@@ -35,7 +40,12 @@ struct call_traits<'y'> {
     typedef std::string STL_STRING_TYPE;
 
     // Use the operator cast to convert char*s to std::strings.
-    static std::string convert(char* value) { return (std::string)value; }
+    static std::string to_string(char* value) { return (std::string)value; }
+
+    // Create PyString from underlying char array
+    static PyObject* from_string(std::string& value) {
+        return PyString_FromStringAndSize(value.data(), value.size());
+    }
 };
 
 // Python 2/3 unicode
@@ -50,7 +60,7 @@ struct call_traits<'u'> {
     typedef std::wstring STL_STRING_TYPE;
 
     // Convert Py_UNICODE* to std::wstring....
-    static std::wstring convert(Py_UNICODE* value) {
+    static std::wstring to_string(Py_UNICODE* value) {
         // If Py_UNICODE is the same width as wchar_t, then just do a few casts.
         // Hopefully wchar_t is unsigned, but it may not matter anyway. When
         // Py_UNICODE actually *is* wchar_t, the casts are unnecessary, but we
@@ -58,18 +68,45 @@ struct call_traits<'u'> {
         if (sizeof(Py_UNICODE) == sizeof(wchar_t))
             return (std::wstring)(wchar_t*)value;
 
-        // In other cases, I'm not sure how to safely convert besides
-        // kind of doing it manually: Find the length of the string by
-        // finding its NULL-terminating character, allocate a buffer of
-        // wchar_t's, cast each character to wchar_t, etc.
+        // In other cases, cast each character to wchar_t. Technically this
+        // means that when a surrogate pair appears in the UTF-16 source, we
+        // will treat it as two "unpaired surrogate" codepoints, which are
+        // illegal in UTF-32. But the library doesn't care, and we will just be
+        // converting back to UTF-16 later.
+        //
+        // There is a risk that the unpaired surrogates will end up in
+        // different diff blocks, but this is par for the course for narrow
+        // builds of Python. (difflib has the same problem.)
         size_t len = 0;
         while (value[len] != 0)
             len++;
-        wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * len);
+        wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
         assert(buf);
+        buf[len] = '\0';
         for (size_t i = 0; i < len; i++)
             buf[i] = (wchar_t)value[i];
         std::wstring ret = (std::wstring)buf;
+        free(buf);
+        return ret;
+    }
+
+    static PyObject* from_string(std::wstring value) {
+        // Wide build--just cast underlying char_t array.
+        if (sizeof(Py_UNICODE) == sizeof(wchar_t))
+            return PyUnicode_FromUnicode((Py_UNICODE*)value.data(), value.size());
+
+        // Narrow build--cast to 16-bit. This is not the normal way to convert
+        // UTF-32 to UTF-16, but since we got the wstring by casting UTF-16
+        // chars it is fine in this case (modulo the unpaired surrogate issues
+        // which we are intentionally not addressing here--see comments in
+        // to_string).
+        size_t len = value.size();
+        Py_UNICODE* buf = (Py_UNICODE*)malloc(sizeof(Py_UNICODE) * (len + 1));
+        assert(buf);
+        buf[len] = '\0';
+        for (size_t i = 0; i < len; i++)
+            buf[i] = (Py_UNICODE)value[i];
+        PyObject* ret = PyUnicode_FromUnicode(buf, len);
         free(buf);
         return ret;
     }
@@ -117,19 +154,16 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     opcodes[dmp.EQUAL] = PyString_FromString("=");
     
     dmp.Diff_Timeout = timelimit;
-    typename DMP::Diffs diff = dmp.diff_main(traits::convert(a), traits::convert(b), checklines);
+    typename DMP::Diffs diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
 
     if (cleanupSemantic)
         dmp.diff_cleanupSemantic(diff);
 
     if (as_patch) {
-        typename DMP::Patches patch = dmp.patch_make(traits::convert(a), diff);
+        typename DMP::Patches patch = dmp.patch_make(traits::to_string(a), diff);
         typename traits::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
 
-        if (FMTSPEC == 'u')
-            return PyUnicode_FromUnicode((Py_UNICODE*)patch_str.data(), patch_str.size());
-        else
-            return PyString_FromStringAndSize((const char*)patch_str.data(), patch_str.size());
+        return traits::from_string(patch_str);
     }
 
     typename std::list<typename DMP::Diff>::const_iterator entryiter;
@@ -143,10 +177,8 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 
         if (counts_only)
             PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
-        else if (FMTSPEC == 'u')
-            PyTuple_SetItem(tuple, 1, PyUnicode_FromUnicode((Py_UNICODE*)entry.text.data(), entry.text.size()));
         else
-            PyTuple_SetItem(tuple, 1, PyString_FromStringAndSize((const char*)entry.text.data(), entry.text.size()));
+            PyTuple_SetItem(tuple, 1, traits::from_string(entry.text));
 
         PyList_Append(ret, tuple);
         Py_DECREF(tuple); // the list owns a reference now
