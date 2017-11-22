@@ -1,4 +1,5 @@
 #include <Python.h>
+#include <locale>
 
 #include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
@@ -26,7 +27,7 @@ struct call_traits<'s'> {
     static std::string to_string(char* value) { return (std::string)value; }
 
     // Create PyString from underlying char array
-    static PyObject* from_string(std::string& value) { 
+    static PyObject* from_string(std::string& value) {
         return PyString_FromStringAndSize(value.data(), value.size());
     }
 };
@@ -45,6 +46,16 @@ struct call_traits<'y'> {
     // Create PyString from underlying char array
     static PyObject* from_string(std::string& value) {
         return PyString_FromStringAndSize(value.data(), value.size());
+    }
+
+    // Convert std::strings to char*s
+    static const char* to_bytes(std::string& value) {
+        return value.c_str();
+    }
+
+    // Convert std::strings to char*s
+    static const char* to_bytes(std::string& value) {
+        return value.c_str();
     }
 };
 
@@ -110,6 +121,74 @@ struct call_traits<'u'> {
         free(buf);
         return ret;
     }
+
+/* Python 3.5 introduced Py_EncodeLocale for converting wchar_t* to char*.
+   Backport that method for the benefit of Python 2.7 and 3.4. However,
+   if we're on Python 3.5+, just use the native method. */
+#if PY_MAJOR_VERSION == 2 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION <= 4)
+    static const char* to_bytes(std::wstring& value) {
+        const wchar_t *text = value.c_str();
+        const size_t len = wcslen(text);
+        char *result = NULL, *bytes = NULL;
+        size_t i, size, converted;
+        wchar_t c, buf[2];
+
+        /* The function works in two steps:
+           1. compute the length of the output buffer in bytes (size)
+           2. outputs the bytes */
+        size = 0;
+        buf[1] = 0;
+        while (1) {
+            for (i=0; i < len; i++) {
+                c = text[i];
+                if (c >= 0xdc80 && c <= 0xdcff) {
+                    /* UTF-8b surrogate */
+                    if (bytes != NULL) {
+                        *bytes++ = c - 0xdc00;
+                        size--;
+                    }
+                    else
+                        size++;
+                    continue;
+                }
+                else {
+                    buf[0] = c;
+                    if (bytes != NULL)
+                        converted = wcstombs(bytes, buf, size);
+                    else
+                        converted = wcstombs(NULL, buf, 0);
+                    if (converted == (size_t)-1) {
+                        if (result != NULL)
+                            PyMem_Free(result);
+                        return NULL;
+                    }
+                    if (bytes != NULL) {
+                        bytes += converted;
+                        size -= converted;
+                    }
+                    else
+                        size += converted;
+                }
+            }
+            if (result != NULL) {
+                *bytes = '\0';
+                break;
+            }
+
+            size += 1; /* nul byte at the end */
+            result = (char *) PyMem_Malloc(size);
+            if (result == NULL) {
+                return NULL;
+            }
+            bytes = result;
+        }
+        return result;
+    }
+#else
+    static const char* to_bytes(std::wstring& value) {
+        return Py_EncodeLocale(value.c_str(), NULL);
+    }
+#endif
 };
 
 // actual function
@@ -142,9 +221,9 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
                                      &timelimit, &checklines, &cleanupSemantic,
                                      &counts_only, &as_patch))
         return NULL;
-    
+
     PyObject *ret = PyList_New(0);
-    
+
     typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
     DMP dmp;
 
@@ -152,7 +231,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     opcodes[dmp.DELETE] = PyString_FromString("-");
     opcodes[dmp.INSERT] = PyString_FromString("+");
     opcodes[dmp.EQUAL] = PyString_FromString("=");
-    
+
     dmp.Diff_Timeout = timelimit;
     typename DMP::Diffs diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
 
@@ -188,7 +267,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_DECREF(opcodes[dmp.DELETE]);
     Py_DECREF(opcodes[dmp.INSERT]);
     Py_DECREF(opcodes[dmp.EQUAL]);
-    
+
     return ret;
 }
 
@@ -198,6 +277,60 @@ diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
     return diff_match_patch_diff<'u'>(self, args, kwargs);
 }
 
+
+template <char FMTSPEC>
+static PyObject *
+diff_match_patch_match_main(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    typedef call_traits<FMTSPEC> traits;
+    typename traits::PY_STRING_STORAGE pattern, text;
+    int loc;
+    int match_distance = 1000;
+    int match_maxbits = 32;
+    float match_threshold = 0.5;
+    char format_spec[64];
+
+    static char *kwlist[] = {
+        strdup("pattern"),
+        strdup("text"),
+        strdup("loc"),
+        strdup("match_distance"),
+        strdup("match_maxbits"),
+        strdup("match_threshold"),
+        NULL };
+
+    sprintf(format_spec, "%c%ci|iif", FMTSPEC, FMTSPEC);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
+                                     &pattern, &text, &loc,
+                                     &match_distance, &match_maxbits, &match_threshold)) {
+        return NULL;
+    }
+
+    typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
+    DMP dmp;
+
+    dmp.Match_Distance = match_distance;
+    dmp.Match_MaxBits = match_maxbits;
+    dmp.Match_Threshold = match_threshold;
+
+    try {
+        int index = dmp.match_main(traits::to_string(pattern), traits::to_string(text), loc);
+        return Py_BuildValue("i", index);
+    } catch (std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        return NULL;
+    } catch (typename traits::STL_STRING_TYPE& s) {
+        PyErr_SetString(PyExc_RuntimeError, traits::to_bytes(s));
+        return NULL;
+    }
+}
+
+static PyObject *
+diff_match_patch_match_main_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_match_main<'u'>(self, args, kwargs);
+}
+
 #if PY_MAJOR_VERSION == 2
 static PyObject *
 diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -205,11 +338,21 @@ diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
     return diff_match_patch_diff<'s'>(self, args, kwargs);
 }
 
+static PyObject *
+diff_match_patch_match_main_str(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_match_main<'s'>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
     {"diff_unicode", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
     {"diff_str", (PyCFunction)diff_match_patch_diff_str, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two (regular) strings. Returns a list of tuples (OP, LEN)."},
+    {"match_main_unicode", (PyCFunction)diff_match_patch_match_main_unicode, METH_VARARGS|METH_KEYWORDS,
+    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
+    {"match_main_str", (PyCFunction)diff_match_patch_match_main_str, METH_VARARGS|METH_KEYWORDS,
+    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -227,11 +370,21 @@ diff_match_patch_diff_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
     return diff_match_patch_diff<'y'>(self, args, kwargs);
 }
 
+static PyObject *
+diff_match_patch_match_main_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_patch_match_main<'y'>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
     {"diff", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
     {"diff_bytes", (PyCFunction)diff_match_patch_diff_bytes, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two byte strings. Returns a list of tuples (OP, LEN)."},
+    {"match_main", (PyCFunction)diff_match_patch_match_main_unicode, METH_VARARGS|METH_KEYWORDS,
+    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
+    {"match_main_bytes", (PyCFunction)diff_match_patch_match_main_bytes, METH_VARARGS|METH_KEYWORDS,
+    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
