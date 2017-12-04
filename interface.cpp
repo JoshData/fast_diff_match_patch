@@ -52,11 +52,6 @@ struct call_traits<'y'> {
     static const char* to_bytes(std::string& value) {
         return value.c_str();
     }
-
-    // Convert std::strings to char*s
-    static const char* to_bytes(std::string& value) {
-        return value.c_str();
-    }
 };
 
 // Python 2/3 unicode
