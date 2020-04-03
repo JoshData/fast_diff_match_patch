@@ -59,24 +59,24 @@ class DiffTests(unittest.TestCase):
         self.assertDiffString(
             'this is a test',
             'this is a test',
-            [('=', 'this is a test')],
-            [('=', 14)],
+            [('0', 'this is a test')],
+            [('0', 14)],
         )
 
         self.assertDiffString(
             'this is a test',
             'this program is not \u2192 a test',
             [
-                ('=', 'this '),
-                ('-', 'is'),
-                ('+', 'program is not \u2192'),
-                ('=', ' a test'),
+                ('0', 'this '),
+                ('-1', 'is'),
+                ('1', 'program is not \u2192'),
+                ('0', ' a test'),
             ],
             [
-                ('=', 5),
-                ('-', 2),
-                ('+', 16),
-                ('=', 7),
+                ('0', 5),
+                ('-1', 2),
+                ('1', 16),
+                ('0', 7),
             ]
         )
 
@@ -91,24 +91,24 @@ class DiffTests(unittest.TestCase):
         self.assertDiffBytes(
             b'this is a test',
             b'this is a test',
-            [('=', 'this is a test')],
-            [('=', 14)],
+            [('0', 'this is a test')],
+            [('0', 14)],
         )
 
         self.assertDiffBytes(
             b'this is a test',
             b'this program is not ==> a test',
             [
-                ('=', 'this '),
-                ('-', 'is'),
-                ('+', 'program is not ==>'),
-                ('=', ' a test'),
+                ('0', 'this '),
+                ('-1', 'is'),
+                ('1', 'program is not ==>'),
+                ('0', ' a test'),
             ],
             [
-                ('=', 5),
-                ('-', 2),
-                ('+', 18),
-                ('=', 7),
+                ('0', 5),
+                ('-1', 2),
+                ('1', 18),
+                ('0', 7),
             ]
         )
 
@@ -117,11 +117,11 @@ class DiffTests(unittest.TestCase):
             '\U0001f37e',
             '\U0001f37f',
             [
-                ('-', u'\U0001f37e'),
-                ('+', u'\U0001f37f')
+                ('-1', u'\U0001f37e'),
+                ('1', u'\U0001f37f')
             ],
             [
-                ('-', 1),
-                ('+', 1),
+                ('-1', 1),
+                ('1', 1),
             ]
         )
