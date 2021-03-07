@@ -146,6 +146,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     float timelimit = 0.0;
     int checklines = 1;
     int cleanupSemantic = 1;
+    int cleanupEfficiency = 1;
     int counts_only = 1;
     int as_patch = 0;
     char format_spec[64];
@@ -156,15 +157,16 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("timelimit"),
         strdup("checklines"),
         strdup("cleanup_semantic"),
+        strdup("cleanup_efficiency"),
         strdup("counts_only"),
         strdup("as_patch"),
         NULL };
 
-    sprintf(format_spec, "%c%c|fbbbb", FMTSPEC, FMTSPEC);
+    sprintf(format_spec, "%c%c|fbbbbb", FMTSPEC, FMTSPEC);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b,
                                      &timelimit, &checklines, &cleanupSemantic,
-                                     &counts_only, &as_patch))
+                                     &cleanupEfficiency, &counts_only, &as_patch))
         return NULL;
 
     PyObject *ret = PyList_New(0);
@@ -182,6 +184,9 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 
     if (cleanupSemantic)
         dmp.diff_cleanupSemantic(diff);
+
+    if (cleanupEfficiency)
+        dmp.diff_cleanupEfficiency(diff);
 
     if (as_patch) {
         typename DMP::Patches patch = dmp.patch_make(traits::to_string(a), diff);
