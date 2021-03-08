@@ -146,7 +146,7 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     float timelimit = 0.0;
     int checklines = 1;
     int cleanupSemantic = 1;
-    int cleanupEfficiency = 1;
+    int cleanupEfficiency = 0;
     int counts_only = 1;
     int as_patch = 0;
     char format_spec[64];
