@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import unittest
 import sys
 
-import diff_match_patch
+import fast_diff_match_patch as diff_match_patch
 
 if sys.version_info[0] == 3:
     diff = diff_match_patch.diff

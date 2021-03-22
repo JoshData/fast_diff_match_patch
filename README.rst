@@ -19,7 +19,7 @@ First::
 
 Then write (this is Python 3)::
 
-	from diff_match_patch import diff
+	from fast_diff_match_patch import diff
 
 	changes = diff("Hello world.", "Goodbye moon.",
 		timelimit=0, checklines=False)
@@ -63,3 +63,10 @@ And to test without installing::
 
  PYTHONPATH=build/lib.linux-x86_64-2.7/ python test.py
  PYTHONPATH=build/lib.linux-x86_64-3.4/ python3 test.py
+
+Changelog
+---------
+
+2.0.0 (unreleased)
+******************
+* Rename package import from `diff_match_patch` to `fast_diff_match_patch` to avoid import naming collision with `<https://pypi.org/project/diff-match-patch/>`_.

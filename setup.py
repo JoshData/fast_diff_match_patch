@@ -5,14 +5,14 @@ from setuptools import setup, find_packages, Extension
 # python setup.py sdist bdist_wheel
 # twine upload dist/*
 
-module1 = Extension('diff_match_patch',
+module1 = Extension('fast_diff_match_patch',
                     sources = ['interface.cpp'],
                     include_dirs = [],
                     libraries = [])
 
 setup(
-    name='diff_match_patch_python',
-    version='1.0.2',
+    name='fast_diff_match_patch',
+    version='2.0.0',
     description=u'A Python extension module that wraps Google\'s diff_match_patch C++ implementation for very fast string comparisons. Version 1.0.2 fixes a build issue on Macs.',
     long_description=open("README.rst").read(),
     author=u'Joshua Tauberer',
