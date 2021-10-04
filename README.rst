@@ -35,6 +35,8 @@ The ``timelimit`` argument is the maximum running time in seconds if you want to
 
 The diff methods also take a ``counts_only`` argument which is ``True`` by default. Set it to ``False`` to have the returned value be an array of tuples of operations and corresponding strings rather than operations and the lengths of those strings.
 
+The Global Interpreter Lock (GIL) is released while performing the diff so that this library can be used in a multi-threaded application.
+
 Building from source
 --------------------
 

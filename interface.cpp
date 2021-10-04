@@ -181,11 +181,17 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     opcodes[dmp.INSERT] = PyString_FromString("+");
     opcodes[dmp.EQUAL] = PyString_FromString("=");
 
+    typename DMP::Diffs diff;
+
+    Py_BEGIN_ALLOW_THREADS /* RELEASE THE GIL */
+
     dmp.Diff_Timeout = timelimit;
-    typename DMP::Diffs diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
+    diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
 
     if (cleanupSemantic)
         dmp.diff_cleanupSemantic(diff);
+
+    Py_END_ALLOW_THREADS /* ACQUIRE THE GIL */
 
     if (as_patch) {
         typename DMP::Patches patch = dmp.patch_make(traits::to_string(a), diff);
