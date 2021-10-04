@@ -3,15 +3,7 @@ from __future__ import unicode_literals
 import sys
 import unittest
 
-import diff_match_patch
-
-if sys.version_info[0] == 3:
-    diff = diff_match_patch.diff
-    diff_bytes = diff_match_patch.diff_bytes
-else:
-    diff = diff_match_patch.diff_unicode
-    diff_bytes = diff_match_patch.diff_str
-
+from diff_match_patch import diff
 
 class DiffTests(unittest.TestCase):
     def assertDiffString(self, text1, text2, expected, expected_counts_only):
@@ -32,7 +24,7 @@ class DiffTests(unittest.TestCase):
         self.assertEqual(actual, expected_counts_only)
 
     def assertDiffBytes(self, text1, text2, expected, expected_counts_only):
-        actual = diff_bytes(
+        actual = diff(
             text1, text2,
             timelimit=15,
             checklines=False,
@@ -40,7 +32,7 @@ class DiffTests(unittest.TestCase):
             counts_only=False)
         self.assertEqual(actual, expected)
 
-        actual = diff_bytes(
+        actual = diff(
             text1, text2,
             timelimit=15,
             checklines=False,
@@ -80,7 +72,7 @@ class DiffTests(unittest.TestCase):
             ]
         )
 
-    def test_diff_bytes(self):
+    def test_diff(self):
         self.assertDiffBytes(
             b'',
             b'',

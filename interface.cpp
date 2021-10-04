@@ -3,6 +3,8 @@
 
 #include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
+/* Shims for Python 2 / Python 3 */
+
 #if PY_MAJOR_VERSION == 3
     // Upgrade these types.
     #define PyString_FromString PyUnicode_FromString
@@ -136,10 +138,12 @@ struct call_traits<'u'> {
 #endif
 };
 
-// actual function
+
+// COMPUTATIONAL FUNCTIONS
+
 template <char FMTSPEC>
 static PyObject *
-diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
+diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     typedef call_traits<FMTSPEC> traits;
     typename traits::PY_STRING_STORAGE a, b;
@@ -216,16 +220,9 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
-static PyObject *
-diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    return diff_match_patch_diff<'u'>(self, args, kwargs);
-}
-
-
 template <char FMTSPEC>
 static PyObject *
-diff_match_patch_match_main(PyObject *self, PyObject *args, PyObject *kwargs)
+diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     typedef call_traits<FMTSPEC> traits;
     typename traits::PY_STRING_STORAGE pattern, text;
@@ -270,37 +267,51 @@ diff_match_patch_match_main(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 }
 
-static PyObject *
-diff_match_patch_match_main_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    return diff_match_patch_match_main<'u'>(self, args, kwargs);
-}
-
-#if PY_MAJOR_VERSION == 2
-static PyObject *
-diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    return diff_match_patch_diff<'s'>(self, args, kwargs);
-}
+// WRAPPER FUNCTIONS THAT DETERMINE WHETHER UNICODE OR BYTES ARE PASSED
 
 static PyObject *
-diff_match_patch_match_main_str(PyObject *self, PyObject *args, PyObject *kwargs)
+diff_match_patch__diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    return diff_match_patch_match_main<'s'>(self, args, kwargs);
+    // Check if the first argument is a Unicode object, and if so, run
+    // the Unicode version of the method. Otherwise run the bytes version.
+    PyObject* first_arg;
+    if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
+        if (PyUnicode_Check(first_arg))
+            return diff_match_patch__diff__impl<'u'>(self, args, kwargs);
+    #if PY_MAJOR_VERSION == 2
+        return diff_match_patch__diff__impl<'s'>(self, args, kwargs);
+    #else
+        return diff_match_patch__diff__impl<'y'>(self, args, kwargs);
+    #endif
 }
+
+static PyObject *
+diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    // Check if the first argument is a Unicode object, and if so, run
+    // the Unicode version of the method. Otherwise run the bytes version.
+    PyObject* first_arg;
+    if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
+        if (PyUnicode_Check(first_arg))
+            return diff_match_patch__match__impl<'u'>(self, args, kwargs);
+    #if PY_MAJOR_VERSION == 2
+        return diff_match_patch__match__impl<'s'>(self, args, kwargs);
+    #else
+        return diff_match_patch__match__impl<'y'>(self, args, kwargs);
+    #endif
+}
+
+// EXTENSION MODULE METADATA
 
 static PyMethodDef MyMethods[] = {
-    {"diff_unicode", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
-    {"diff_str", (PyCFunction)diff_match_patch_diff_str, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two (regular) strings. Returns a list of tuples (OP, LEN)."},
-    {"match_main_unicode", (PyCFunction)diff_match_patch_match_main_unicode, METH_VARARGS|METH_KEYWORDS,
-    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
-    {"match_main_str", (PyCFunction)diff_match_patch_match_main_str, METH_VARARGS|METH_KEYWORDS,
+    {"diff", (PyCFunction)diff_match_patch__diff, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two strings or bytes-like objects (Unicode and str's in Python 2). Returns a list of tuples (OP, LEN)."},
+    {"match_main", (PyCFunction)diff_match_patch__match, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#if PY_MAJOR_VERSION == 2
 PyMODINIT_FUNC
 initdiff_match_patch(void)
 {
@@ -309,30 +320,6 @@ initdiff_match_patch(void)
 #endif
 
 #if PY_MAJOR_VERSION == 3
-static PyObject *
-diff_match_patch_diff_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    return diff_match_patch_diff<'y'>(self, args, kwargs);
-}
-
-static PyObject *
-diff_match_patch_match_main_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-    return diff_match_patch_match_main<'y'>(self, args, kwargs);
-}
-
-static PyMethodDef MyMethods[] = {
-    {"diff", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
-    {"diff_bytes", (PyCFunction)diff_match_patch_diff_bytes, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two byte strings. Returns a list of tuples (OP, LEN)."},
-    {"match_main", (PyCFunction)diff_match_patch_match_main_unicode, METH_VARARGS|METH_KEYWORDS,
-    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
-    {"match_main_bytes", (PyCFunction)diff_match_patch_match_main_bytes, METH_VARARGS|METH_KEYWORDS,
-    "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
 static struct PyModuleDef mymodule = {
    PyModuleDef_HEAD_INIT,
    "diff_match_patch",   /* name of module */

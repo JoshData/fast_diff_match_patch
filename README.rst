@@ -29,9 +29,7 @@ Then write (this is Python 3)::
 		if op == "=": print ("next", length, "characters are in common")
 		if op == "+": print ("next", length, "characters are inserted")
 
-The module also provides a method called ``diff_bytes`` for performing a diff on a bytes array.
-
-In Python 2, the methods are named ``diff_unicode`` (unicode strings) and ``diff_str`` (str strings).
+(In previous versions of this package, separate `diff_bytes` (Py3), ``diff_unicode`` and ``diff_str`` (Py2) methods were available. They have been merged into a single `diff` method that checks the type of the arguments passed.)
 
 The ``timelimit`` argument is the maximum running time in seconds if you want to ensure the result comes quickly. According to the Google docs, the diff will stop working after the time is exceeded and will return a valid diff, but it might not be the best one. ``checklines`` is also a Google thing and might speed up diffs that are over lined-based text like code.
 
