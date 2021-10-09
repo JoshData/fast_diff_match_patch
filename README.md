@@ -30,15 +30,14 @@ Then write (this is Python 3):
 
     from fast_diff_match_patch import diff
 
-    changes = diff("Hello world.", "Goodbye moon.",
-        timelimit=0, checklines=False)
+    changes = diff("Hello world.", "Goodbye moon.")
 
     for op, length in changes:
         if op == "-": print ("next", length, "characters are deleted")
         if op == "=": print ("next", length, "characters are in common")
         if op == "+": print ("next", length, "characters are inserted")
 
-The two textual arguments can be either strings or bytes.
+The two textual arguments can be either strings or bytes (Unicode or str on Python 2.x).
 
 Some keyword arguments are also available:
 
@@ -49,13 +48,18 @@ valid diff, but it might not be the best one. `checklines` is also a
 Google thing and might speed up diffs that are over lined-based text
 like code.
 
+`checklines` (default `True`) is the same argument in the diff_main
+subroutine of the main library.
+
 `cleanup` (default `"Semantic"`) is `"Semantic"`, `"Efficiency"`, or `"No"`
 to run the corresponding cleanup subroutine after performing the diff.
 
-The diff methods also take a `counts_only` argument which is `True` by
-default. Set it to `False` to have the returned value be an array of
+Set `counts_only` (default `True`) to `False` to have the returned value be an array of
 tuples of operations and corresponding strings rather than operations
 and the lengths of those strings.
+
+If `as_patch` (default `False`) is `True`, the diff is returned in patch format
+as a string.
 
 The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
