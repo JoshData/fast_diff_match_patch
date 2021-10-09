@@ -40,12 +40,17 @@ Then write (this is Python 3):
 
 The two textual arguments can be either strings or bytes.
 
-The `timelimit` argument is the maximum running time in seconds if you
+Some keyword arguments are also available:
+
+`timelimit` (default 0) gives the maximum running time in seconds if you
 want to ensure the result comes quickly. According to the Google docs,
 the diff will stop working after the time is exceeded and will return a
 valid diff, but it might not be the best one. `checklines` is also a
 Google thing and might speed up diffs that are over lined-based text
 like code.
+
+`cleanup` (default `"Semantic"`) is `"Semantic"`, `"Efficiency"`, or `"No"`
+to run the corresponding cleanup subroutine after performing the diff.
 
 The diff methods also take a `counts_only` argument which is `True` by
 default. Set it to `False` to have the returned value be an array of

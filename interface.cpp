@@ -188,7 +188,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     typename traits::PY_ARG_TYPE a, b;
     float timelimit = 0.0;
     int checklines = 1;
-    int cleanupSemantic = 1;
+    char* cleanupMode = NULL;
     int counts_only = 1;
     int as_patch = 0;
     char format_spec[64];
@@ -198,15 +198,15 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("right_document"),
         strdup("timelimit"),
         strdup("checklines"),
-        strdup("cleanup_semantic"),
+        strdup("cleanup"),
         strdup("counts_only"),
         strdup("as_patch"),
         NULL };
 
-    sprintf(format_spec, "%c%c|fbbbb", FMTSPEC, FMTSPEC);
+    sprintf(format_spec, "%c%c|fbzbbb", FMTSPEC, FMTSPEC);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b,
-                                     &timelimit, &checklines, &cleanupSemantic,
+                                     &timelimit, &checklines, &cleanupMode,
                                      &counts_only, &as_patch))
         return NULL;
 
@@ -227,8 +227,10 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     dmp.Diff_Timeout = timelimit;
     diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
 
-    if (cleanupSemantic)
+    if (cleanupMode == NULL || strcmp(cleanupMode, "Semantic") == 0)
         dmp.diff_cleanupSemantic(diff);
+    else if (strcmp(cleanupMode, "Efficiency") == 0)
+        dmp.diff_cleanupEfficiency(diff);
 
     Py_END_ALLOW_THREADS /* ACQUIRE THE GIL */
 

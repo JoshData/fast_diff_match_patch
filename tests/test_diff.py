@@ -11,16 +11,13 @@ class DiffTests(unittest.TestCase):
             text1, text2,
             timelimit=15,
             checklines=False,
-            cleanup_semantic=True,
             counts_only=False)
         self.assertEqual(actual, expected)
 
         actual = diff(
             text1, text2,
             timelimit=15,
-            checklines=False,
-            cleanup_semantic=True,
-            counts_only=True)
+            checklines=False)
         self.assertEqual(actual, expected_counts_only)
 
     def assertDiffBytes(self, text1, text2, expected, expected_counts_only):
@@ -28,16 +25,13 @@ class DiffTests(unittest.TestCase):
             text1, text2,
             timelimit=15,
             checklines=False,
-            cleanup_semantic=True,
             counts_only=False)
         self.assertEqual(actual, expected)
 
         actual = diff(
             text1, text2,
             timelimit=15,
-            checklines=False,
-            cleanup_semantic=True,
-            counts_only=True)
+            checklines=False)
         self.assertEqual(actual, expected_counts_only)
 
     def test_string(self):
