@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import sys
 import unittest
 
-from diff_match_patch import diff
+from fast_diff_match_patch import diff
 
 class DiffTests(unittest.TestCase):
     def assertDiffString(self, text1, text2, expected, expected_counts_only):

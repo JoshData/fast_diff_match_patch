@@ -319,16 +319,16 @@ static PyMethodDef MyMethods[] = {
 
 #if PY_MAJOR_VERSION == 2
 PyMODINIT_FUNC
-initdiff_match_patch(void)
+initfast_diff_match_patch(void)
 {
-    (void) Py_InitModule("diff_match_patch", MyMethods);
+    (void) Py_InitModule("fast_diff_match_patch", MyMethods);
 }
 #endif
 
 #if PY_MAJOR_VERSION == 3
 static struct PyModuleDef mymodule = {
    PyModuleDef_HEAD_INIT,
-   "diff_match_patch",   /* name of module */
+   "fast_diff_match_patch",   /* name of module */
    NULL, /* module documentation, may be NULL */
    -1,       /* size of per-interpreter state of the module,
                 or -1 if the module keeps state in global variables. */
@@ -336,7 +336,7 @@ static struct PyModuleDef mymodule = {
 };
 
 PyMODINIT_FUNC
-PyInit_diff_match_patch(void)
+PyInit_fast_diff_match_patch(void)
 {
     return PyModule_Create(&mymodule);
 }

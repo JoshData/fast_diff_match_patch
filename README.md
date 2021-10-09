@@ -28,7 +28,7 @@ First:
 
 Then write (this is Python 3):
 
-    from diff_match_patch import diff
+    from fast_diff_match_patch import diff
 
     changes = diff("Hello world.", "Goodbye moon.",
         timelimit=0, checklines=False)
@@ -39,11 +39,6 @@ Then write (this is Python 3):
         if op == "+": print ("next", length, "characters are inserted")
 
 The two textual arguments can be either strings or bytes.
-
-(In previous versions of this package, separate
-`diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
-methods were available. They have been merged into a single
-`diff` method that checks the type of the arguments passed.)
 
 The `timelimit` argument is the maximum running time in seconds if you
 want to ensure the result comes quickly. According to the Google docs,
@@ -59,6 +54,14 @@ and the lengths of those strings.
 
 The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
+
+Changelog
+---------
+
+* The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/.
+* In previous versions of this package, separate `diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
+methods were available. They have been merged into a single `diff` method that checks the type of the arguments passed.)
+
 
 Building from source
 --------------------

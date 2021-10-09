@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import unittest
 import sys
 
-from diff_match_patch import match_main
+from fast_diff_match_patch import match_main
 
 class MatchTests(unittest.TestCase):
     def test_unicode(self):
