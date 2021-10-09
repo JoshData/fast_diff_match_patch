@@ -8,8 +8,15 @@
 #if PY_MAJOR_VERSION == 3
     // Upgrade these types.
     #define PyString_FromString PyUnicode_FromString
-    #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
     #define PyInt_FromLong PyLong_FromLong
+#endif
+
+#if PY_MAJOR_VERSION == 2
+    #define UNICODESTRING_FORMAT_SYMBOL 'u'
+    #define BYTESTRING_FORMAT_SYMBOL 's'
+#else
+    #define UNICODESTRING_FORMAT_SYMBOL 'U'
+    #define BYTESTRING_FORMAT_SYMBOL 'y'
 #endif
 
 // template traits class
@@ -17,12 +24,13 @@ template <char FMTSPEC>
 struct call_traits {
 };
 
+#if PY_MAJOR_VERSION == 2
 // Python 2 string
 template <>
 struct call_traits<'s'> {
     // PyArg_ParseTuple for 's' gives a 'char*', and we'll
     // convert that to a std::string using a cast operator.
-    typedef char* PY_STRING_STORAGE;
+    typedef char* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
     // Use the operator cast to convert char*s to std::strings.
@@ -38,13 +46,15 @@ struct call_traits<'s'> {
         return value.c_str();
     }
 };
+#endif
 
+#if PY_MAJOR_VERSION == 3
 // Python 3 bytes
 template <>
 struct call_traits<'y'> {
     // PyArg_ParseTuple for 'y' gives a 'char*', and we'll
     // convert that to a std::string using a cast operator.
-    typedef char* PY_STRING_STORAGE;
+    typedef char* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
     // Use the operator cast to convert char*s to std::strings.
@@ -52,7 +62,7 @@ struct call_traits<'y'> {
 
     // Create PyString from underlying char array
     static PyObject* from_string(std::string& value) {
-        return PyString_FromStringAndSize(value.data(), value.size());
+        return PyUnicode_FromStringAndSize(value.data(), value.size());
     }
 
     // Convert std::strings to char*s
@@ -60,8 +70,10 @@ struct call_traits<'y'> {
         return value.c_str();
     }
 };
+#endif
 
-// Python 2/3 unicode
+#if PY_MAJOR_VERSION == 2
+// Python 2 unicode
 template <>
 struct call_traits<'u'> {
     // PyArg_ParseTuple for 'u' gives a 'Py_UNICODE*'. That's a
@@ -69,7 +81,7 @@ struct call_traits<'u'> {
     // On Ubuntu, it seems to be a typedef for wchar_t.
     // On Macs, the default build has it as a typedef for UCS2 (a "narrow" build).
     // With Python 3.3 and forward, it is always a typedef for wchar_t.
-    typedef Py_UNICODE* PY_STRING_STORAGE;
+    typedef Py_UNICODE* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
     // Convert Py_UNICODE* to std::wstring....
@@ -124,10 +136,37 @@ struct call_traits<'u'> {
         return ret;
     }
 
+    // just return a dummy error, because doing the locale conversion manually is complicated
+    static const char* to_bytes(std::wstring& value) {
+        return "Unspecified error";
+    }
+};
+#endif
+
+#if PY_MAJOR_VERSION == 3
+// Python 3.3+ unicode
+template <>
+struct call_traits<'U'> {
+    typedef PyObject* PY_ARG_TYPE;
+    typedef std::wstring STL_STRING_TYPE;
+
+    // Convert PyObject* to std::wstring....
+    static std::wstring to_string(PyObject* value) {
+        Py_ssize_t size;
+        wchar_t* str = PyUnicode_AsWideCharString(value, &size);
+        std::wstring string = std::wstring(str, size);
+        PyMem_Free(str);
+        return string;
+    }
+
+    static PyObject* from_string(std::wstring value) {
+        return PyUnicode_FromWideChar(value.data(), value.size());
+    }
+
 /* Python 3.5 introduced Py_EncodeLocale for converting wchar_t* to char*.
-   If we're on Python 2.7 or 3.4, just return a dummy error, because
+   If we're on Python 3.4, just return a dummy error, because
    doing the locale conversion manually is complicated. */
-#if PY_MAJOR_VERSION == 2 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION <= 4)
+#if PY_MINOR_VERSION <= 4
     static const char* to_bytes(std::wstring& value) {
         return "Unspecified error";
     }
@@ -137,7 +176,7 @@ struct call_traits<'u'> {
     }
 #endif
 };
-
+#endif
 
 // COMPUTATIONAL FUNCTIONS
 
@@ -146,7 +185,7 @@ static PyObject *
 diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     typedef call_traits<FMTSPEC> traits;
-    typename traits::PY_STRING_STORAGE a, b;
+    typename traits::PY_ARG_TYPE a, b;
     float timelimit = 0.0;
     int checklines = 1;
     int cleanupSemantic = 1;
@@ -231,7 +270,7 @@ static PyObject *
 diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     typedef call_traits<FMTSPEC> traits;
-    typename traits::PY_STRING_STORAGE pattern, text;
+    typename traits::PY_ARG_TYPE pattern, text;
     int loc;
     int match_distance = 1000;
     int match_maxbits = 32;
@@ -283,12 +322,8 @@ diff_match_patch__diff(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject* first_arg;
     if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
         if (PyUnicode_Check(first_arg))
-            return diff_match_patch__diff__impl<'u'>(self, args, kwargs);
-    #if PY_MAJOR_VERSION == 2
-        return diff_match_patch__diff__impl<'s'>(self, args, kwargs);
-    #else
-        return diff_match_patch__diff__impl<'y'>(self, args, kwargs);
-    #endif
+            return diff_match_patch__diff__impl<UNICODESTRING_FORMAT_SYMBOL>(self, args, kwargs);
+    return diff_match_patch__diff__impl<BYTESTRING_FORMAT_SYMBOL>(self, args, kwargs);
 }
 
 static PyObject *
@@ -299,12 +334,8 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject* first_arg;
     if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
         if (PyUnicode_Check(first_arg))
-            return diff_match_patch__match__impl<'u'>(self, args, kwargs);
-    #if PY_MAJOR_VERSION == 2
-        return diff_match_patch__match__impl<'s'>(self, args, kwargs);
-    #else
-        return diff_match_patch__match__impl<'y'>(self, args, kwargs);
-    #endif
+            return diff_match_patch__match__impl<UNICODESTRING_FORMAT_SYMBOL>(self, args, kwargs);
+    return diff_match_patch__match__impl<BYTESTRING_FORMAT_SYMBOL>(self, args, kwargs);
 }
 
 // EXTENSION MODULE METADATA
