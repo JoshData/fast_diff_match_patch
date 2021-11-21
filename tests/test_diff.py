@@ -52,7 +52,7 @@ class DiffTests(unittest.TestCase):
             ]
         )
 
-    def test_diff(self):
+    def test_binary(self):
         self.assertDiff(
             b'',
             b'',
@@ -83,6 +83,22 @@ class DiffTests(unittest.TestCase):
                 ('=', 7),
             ]
         )
+
+    def test_binary_safe(self):
+        self.assertDiff(
+            '1\u00002',
+            '1\u00003',
+            [('=', '1\x00'), ('-', '2'), ('+', '3')],
+            [('=', 2), ('-', 1), ('+', 1)],
+        )
+
+        # Not working yet:
+        #self.assertDiff(
+        #    b'1\0002',
+        #    b'1\0003',
+        #    [('=', b'1\x00'), ('-', b'2'), ('+', b'3')],
+        #    [('=', 2), ('-', 1), ('+', 1)],
+        #)
 
     @unittest.skipIf(fast_diff_match_patch.CHAR_WIDTH != 4,
                      "not supported on this platform") # strings become '\ud83c\udf7e' and '\ud83c\udf7f' on Windows
