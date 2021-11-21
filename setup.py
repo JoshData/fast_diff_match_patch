@@ -13,7 +13,7 @@ module1 = Extension('fast_diff_match_patch',
 setup(
     name='fast_diff_match_patch',
     version='2.0.0',
-    description=u'A Python extension module that wraps Google\'s diff_match_patch C++ implementation for very fast string comparisons. Version 1.0.2 fixes a build issue on Macs.',
+    description=u'fast_diff_match_patch: Python package wrapping the C++ implementation of google-diff-match-patch',
     long_description=open("README.md").read(),
     long_description_content_type='text/markdown',
     author=u'Joshua Tauberer',
@@ -21,7 +21,7 @@ setup(
     url='https://github.com/JoshData/diff_match_patch-python',
     packages=find_packages(),
     license='CC0 (copyright waived)',
-    keywords="diff compare Google match patch diff_match_patch extension native C fast",
+    keywords="diff compare Google match patch diff_match_patch native fast",
     ext_modules=[module1],
     classifiers=[
         'Programming Language :: Python :: 2',

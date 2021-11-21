@@ -1,8 +1,9 @@
-Python diff\_match\_patch extension using the C++ port
-======================================================
+fast\_diff\_match\_patch: Python package wrapping the C++ implementation of google-diff-match-patch
+===================================================================================================
 
-A Python extension module that wraps google-diff-match-patch\'s C++
-implementation for performing very fast string comparisons.
+This is a Python 3.6+ package that wraps google-diff-match-patch\'s C++
+implementation for performing very fast string comparisons. This package
+was previously known as diff\_match\_patch\_python.
 
 google-diff-match-patch is a Google library for computing differences
 between text files (http://code.google.com/p/google-diff-match-patch).
@@ -13,18 +14,18 @@ prefer to use it from Python.
 
 Google's library depends on Qt 4, so some other folks rewrote it using
 the standard C++ library classes instead, making it more portable.
-That's at https://github.com/leutloff/diff-match-patch-cpp-stl.
+That's at https://github.com/leutloff/diff-match-patch-cpp-stl. This
+package uses that library.
 
-This project is a Python extension module for the C++ STL port so Python
-code can call into the native library easily. It works in both Python 2
-and Python 3.
+(This package can hopefully still be built for Python 2.7 also but a
+pre-built package is not available.)
 
 Example
 -------
 
 First:
 
-    pip3 install diff_match_patch_python
+    pip3 install fast_diff_match_patch
 
 Then write (this is Python 3):
 
@@ -64,10 +65,11 @@ as a string.
 The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
 
-Changelog
----------
 
-* The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/.
+Changes in version 2.0.0
+------------------------
+
+* The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/ and the package name has been updated to match the import name.
 * In previous versions of this package, separate `diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
 methods were available. They have been merged into a single `diff` method that checks the type of the arguments passed.)
 
@@ -78,26 +80,23 @@ Building from source
 To build from these sources, you will need:
 
 -   Python development headers and the setuptools package
-    (Debian packages `python-dev`, `python-setuptools`, `python3-dev`, `python3-setuptools`)
+    (Debian packages `python3-dev`, `python3-setuptools`)
 -   The diff-match-patch library, which you can clone using
     `git submodule update --init`.
 
-Then build the binary module using:
+Then build/install the binary module using:
 
+    python setup.py build
     python setup.py install
 
-Or you may find pre-built binaries stored in the git repository in the
-build directory. Your mileage may vary with these depending on whether
-your system is compatible.
 
 For package maintainers
 -----------------------
 
 To build everything:
 
-    git submodule update && rm -rf build && python setup.py build && python3 setup.py build
+    git submodule update && rm -rf build && python3 setup.py build
 
-And to test without installing:
+To test without installing:
 
-    PYTHONPATH=build/lib.linux-x86_64-2.7/ python test.py
-    PYTHONPATH=build/lib.linux-x86_64-3.4/ python3 test.py
+    PYTHONPATH=build/lib.linux-x86_64-3.9/ python3 -m unittest
