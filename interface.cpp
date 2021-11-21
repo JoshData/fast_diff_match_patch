@@ -8,7 +8,6 @@
 #if PY_MAJOR_VERSION == 3
     // Upgrade these types.
     #define PyString_FromString PyUnicode_FromString
-    #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
     #define PyInt_FromLong PyLong_FromLong
 #endif
 
@@ -39,7 +38,7 @@ struct BytesShim {
 
     // Create PyString from underlying char array
     static PyObject* from_string(std::string& value) {
-        return PyString_FromStringAndSize(value.data(), value.size());
+        return PyBytes_FromStringAndSize(value.data(), value.size());
     }
 };
 

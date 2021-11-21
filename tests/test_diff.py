@@ -63,7 +63,7 @@ class DiffTests(unittest.TestCase):
         self.assertDiff(
             b'this is a test',
             b'this is a test',
-            [('=', 'this is a test')],
+            [('=', b'this is a test')],
             [('=', 14)],
         )
 
@@ -71,10 +71,10 @@ class DiffTests(unittest.TestCase):
             b'this is a test',
             b'this program is not ==> a test',
             [
-                ('=', 'this '),
-                ('-', 'is'),
-                ('+', 'program is not ==>'),
-                ('=', ' a test'),
+                ('=', b'this '),
+                ('-', b'is'),
+                ('+', b'program is not ==>'),
+                ('=', b' a test'),
             ],
             [
                 ('=', 5),
