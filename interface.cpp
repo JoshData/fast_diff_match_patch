@@ -12,28 +12,23 @@
 #endif
 
 struct BytesShim {
-    // PyArg_ParseTuple for 's' (Py2) or 'y' (Py3) gives a 'char*',
-    // and we'll convert that to a std::string using a cast operator.
-
-    #if PY_MAJOR_VERSION == 2
-    static const char PyArgFormat = 's';
-    #endif
-
-    #if PY_MAJOR_VERSION == 3
-    static const char PyArgFormat = 'y';
-    #endif
-
-    typedef char* PY_ARG_TYPE;
+    static const char* PyArgFormat; // set below
+    typedef Py_buffer PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
     // There are no element width issues for bytes.
-    static bool check_width(char* value) {
+    static bool check_width(const Py_buffer& value) {
         return true;
     }
 
-    // Use the operator cast to convert char*s to std::strings.
-    static std::string to_string(char* value) {
-        return (std::string)value;
+    // Extract the bytes data.
+    static std::string to_string(Py_buffer& value) {
+        auto buffer = (char*)malloc(value.len + 1);
+        PyBuffer_ToContiguous(buffer, &value, value.len, 'C');
+        PyBuffer_Release(&value);
+        auto s = std::string(buffer, value.len);
+        free(buffer);
+        return s;
     }
 
     // Create PyString from underlying char array
@@ -41,6 +36,8 @@ struct BytesShim {
         return PyBytes_FromStringAndSize(value.data(), value.size());
     }
 };
+
+const char* BytesShim::PyArgFormat = "s*";
 
 
 #if PY_MAJOR_VERSION == 2
@@ -51,7 +48,7 @@ struct UnicodeShim {
     // On Ubuntu, it seems to be a typedef for wchar_t.
     // On Macs, the default build has it as a typedef for UCS2 (a "narrow" build).
     // With Python 3.3 and forward, it is always a typedef for wchar_t.
-    static const char PyArgFormat = 'u';
+    static const char* PyArgFormat; // set below
     typedef Py_UNICODE* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
@@ -113,12 +110,13 @@ struct UnicodeShim {
         return ret;
     }
 };
+const char* UnicodeShim::PyArgFormat = "u";
 #endif
 
 #if PY_MAJOR_VERSION == 3
 // Python 3.5+ unicode
 struct UnicodeShim {
-    static const char PyArgFormat = 'U';
+    static const char* PyArgFormat; // set below
     typedef PyObject* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
@@ -142,6 +140,7 @@ struct UnicodeShim {
         return PyUnicode_FromWideChar(value.data(), value.size());
     }
 };
+const char* UnicodeShim::PyArgFormat = "U";
 #endif
 
 // COMPUTATIONAL FUNCTIONS
@@ -168,12 +167,15 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("as_patch"),
         NULL };
 
-    sprintf(format_spec, "%c%c|fbzbbb", Shim::PyArgFormat, Shim::PyArgFormat);
+    sprintf(format_spec, "%s%s|fbzbbb", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b,
                                      &timelimit, &checklines, &cleanupMode,
                                      &counts_only, &as_patch))
         return NULL;
+
+    auto a_str = Shim::to_string(a),
+         b_str = Shim::to_string(b);
 
     // On Windows, wstring is based on the two-byte wchar_t,
     // which is smaller than the four-byte Py_UCS4 that is
@@ -202,7 +204,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_BEGIN_ALLOW_THREADS /* RELEASE THE GIL */
 
     dmp.Diff_Timeout = timelimit;
-    diff = dmp.diff_main(Shim::to_string(a), Shim::to_string(b), checklines);
+    diff = dmp.diff_main(a_str, b_str, checklines);
 
     if (cleanupMode == NULL || strcmp(cleanupMode, "Semantic") == 0)
         dmp.diff_cleanupSemantic(diff);
@@ -212,7 +214,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_END_ALLOW_THREADS /* ACQUIRE THE GIL */
 
     if (as_patch) {
-        typename DMP::Patches patch = dmp.patch_make(Shim::to_string(a), diff);
+        typename DMP::Patches patch = dmp.patch_make(a_str, diff);
         typename Shim::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
 
         return Shim::from_string(patch_str);
@@ -264,12 +266,15 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("match_threshold"),
         NULL };
 
-    sprintf(format_spec, "%c%ci|iif", Shim::PyArgFormat, Shim::PyArgFormat);
+    sprintf(format_spec, "%s%si|iif", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &pattern, &text, &loc,
                                      &match_distance, &match_maxbits, &match_threshold)) {
         return NULL;
     }
+
+    auto pattern_str = Shim::to_string(pattern),
+         text_str = Shim::to_string(text);
 
     if (!Shim::check_width(pattern) || !Shim::check_width(text)) {
         PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
@@ -284,7 +289,7 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     dmp.Match_Threshold = match_threshold;
 
     try {
-        int index = dmp.match_main(Shim::to_string(pattern), Shim::to_string(text), loc);
+        int index = dmp.match_main(pattern_str, text_str, loc);
         return Py_BuildValue("i", index);
     } catch (std::exception& e) {
         PyErr_SetString(PyExc_RuntimeError, e.what());
