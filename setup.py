@@ -15,7 +15,7 @@ setup(
     author_email=u'jt@occams.info',
     url='https://github.com/JoshData/diff_match_patch-python',
     packages=find_packages(),
-    license='CC0 (copyright waived)',
+    license='Apache License 2.0',
     keywords="diff compare Google match patch diff_match_patch native fast",
     ext_modules=[module1],
     classifiers=[
@@ -24,6 +24,9 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     test_suite='tests',
 )
