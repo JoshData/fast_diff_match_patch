@@ -10,7 +10,7 @@ module1 = Extension('diff_match_patch',
 
 setup (
 	name='diff_match_patch_python',
-	version='1.0.2',
+	version='1.0.3',
     packages = find_packages(),
 	author=u'Joshua Tauberer',
 	author_email=u'jt@occams.info',
