@@ -33,6 +33,10 @@ struct call_traits<'s'> {
     typedef char* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
+    static bool check_width(char* value) {
+        return true;
+    }
+
     // Use the operator cast to convert char*s to std::strings.
     static std::string to_string(char* value) { return (std::string)value; }
 
@@ -51,6 +55,10 @@ struct call_traits<'y'> {
     // convert that to a std::string using a cast operator.
     typedef char* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
+
+    static bool check_width(char* value) {
+        return true;
+    }
 
     // Use the operator cast to convert char*s to std::strings.
     static std::string to_string(char* value) { return (std::string)value; }
@@ -73,6 +81,12 @@ struct call_traits<'u'> {
     // With Python 3.3 and forward, it is always a typedef for wchar_t.
     typedef Py_UNICODE* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
+
+    static bool check_width(Py_UNICODE* value) {
+        // There's no fast way to check that all characters are within
+        // bounds, so we'll skip the check.
+        return true;
+    }
 
     // Convert Py_UNICODE* to std::wstring....
     static std::wstring to_string(Py_UNICODE* value) {
@@ -135,6 +149,13 @@ struct call_traits<'U'> {
     typedef PyObject* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
+    static bool check_width(PyObject* value) {
+        // Return whether any four-byte Unicode characters exist
+        // and the platform's wchar_t type only is two bytes, e.g.
+        // on Windows.
+        return PyUnicode_MAX_CHAR_VALUE(value) <= WCHAR_MAX;
+    }
+
     // Convert PyObject* to std::wstring....
     static std::wstring to_string(PyObject* value) {
         Py_ssize_t size;
@@ -181,6 +202,18 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
                                      &timelimit, &checklines, &cleanupMode,
                                      &counts_only, &as_patch))
         return NULL;
+
+    // On Windows, wstring is based on the two-byte wchar_t,
+    // which is smaller than the four-byte Py_UCS4 that is
+    // the basis for Python strings. As a result, high-code-point
+    // characters will be split into two wchar_t characters,
+    // and the diff will return insertion/deletion counts
+    // that don't line up with the input string. Raise an
+    // exception if this would occur.
+    if (!traits::check_width(a) || !traits::check_width(b)) {
+        PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
+        return NULL;
+    }
 
     PyObject *ret = PyList_New(0);
 
@@ -267,6 +300,11 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
 
+    if (!traits::check_width(pattern) || !traits::check_width(text)) {
+        PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
+        return NULL;
+    }
+
     typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
     DMP dmp;
 
@@ -326,7 +364,8 @@ static PyMethodDef MyMethods[] = {
 PyMODINIT_FUNC
 initfast_diff_match_patch(void)
 {
-    (void) Py_InitModule("fast_diff_match_patch", MyMethods);
+    auto module = Py_InitModule("fast_diff_match_patch", MyMethods);
+    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(call_traits<UNICODESTRING_FORMAT_SYMBOL>::STL_STRING_TYPE::value_type));
 }
 #endif
 
@@ -343,6 +382,8 @@ static struct PyModuleDef mymodule = {
 PyMODINIT_FUNC
 PyInit_fast_diff_match_patch(void)
 {
-    return PyModule_Create(&mymodule);
+    auto module = PyModule_Create(&mymodule);
+    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(call_traits<UNICODESTRING_FORMAT_SYMBOL>::STL_STRING_TYPE::value_type));
+    return module;
 }
 #endif

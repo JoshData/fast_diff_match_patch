@@ -84,7 +84,11 @@ class DiffTests(unittest.TestCase):
             ]
         )
 
+    @unittest.skipIf(fast_diff_match_patch.CHAR_WIDTH != 4,
+                     "not supported on this platform") # strings become '\ud83c\udf7e' and '\ud83c\udf7f' on Windows
     def test_unicode_surrogate_pair(self):
+        self.assertEqual(fast_diff_match_patch.CHAR_WIDTH, 4)
+
         self.assertDiff(
             '\U0001f37e',
             '\U0001f37f',
@@ -97,3 +101,10 @@ class DiffTests(unittest.TestCase):
                 ('+', 1),
             ]
         )
+
+    # on Windows only
+    @unittest.skipIf(fast_diff_match_patch.CHAR_WIDTH == 4,
+                     "does nothing on this platform")
+    def test_unicode_surrogate_pair_detected(self):
+        self.assertEqual(fast_diff_match_patch.CHAR_WIDTH, 2)
+        self.assertRaises(RuntimeError, lambda : fast_diff_match_patch.diff('\U0001f37e', '\U0001f37f'))

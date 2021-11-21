@@ -62,6 +62,11 @@ and the lengths of those strings.
 If `as_patch` (default `False`) is `True`, the diff is returned in patch format
 as a string.
 
+On Windows, an exception will be thrown if either of the two text strings has characters
+outside of the Basic Multilingual Plane because the native platform character type
+is a two-byte character. The `fast_diff_match_patch.CHAR_WIDTH` field, which will either
+be 2 or 4, can be used to determine whether these characters are supported ahead of time.
+
 The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
 
@@ -72,7 +77,7 @@ Changes in version 2.0.0
 * The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/ and the package name has been updated to match the import name.
 * In previous versions of this package, separate `diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
 methods were available. They have been merged into a single `diff` method that checks the type of the arguments passed.)
-
+* On Windows, an exception will be thrown if a string has characters outside of the Basic Multilingual Plane.
 
 Building from source
 --------------------
