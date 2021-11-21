@@ -167,7 +167,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("as_patch"),
         NULL };
 
-    sprintf(format_spec, "%s%s|fbzbbb", Shim::PyArgFormat, Shim::PyArgFormat);
+    sprintf(format_spec, "%s%s|fbzbb", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b,
                                      &timelimit, &checklines, &cleanupMode,

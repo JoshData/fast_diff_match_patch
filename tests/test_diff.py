@@ -123,3 +123,14 @@ class DiffTests(unittest.TestCase):
     def test_unicode_surrogate_pair_detected(self):
         self.assertEqual(fast_diff_match_patch.CHAR_WIDTH, 2)
         self.assertRaises(RuntimeError, lambda : fast_diff_match_patch.diff('\U0001f37e', '\U0001f37f'))
+
+    def test_patch(self):
+        actual = fast_diff_match_patch.diff(
+            "Text 1",
+            "Text 2",
+            as_patch=True)
+        self.assertEqual(actual, """@@ -2,5 +2,5 @@
+ ext 
+-1
++2
+""")
