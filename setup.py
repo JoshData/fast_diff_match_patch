@@ -1,10 +1,5 @@
 from setuptools import setup, find_packages, Extension
 
-# Note to self: To upload a new version to PyPI, run:
-# pip install wheel twine
-# python setup.py sdist bdist_wheel
-# twine upload dist/*
-
 module1 = Extension('fast_diff_match_patch',
                     sources = ['interface.cpp'],
                     include_dirs = [],
@@ -27,7 +22,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],

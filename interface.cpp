@@ -1,5 +1,5 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <locale>
 
 #include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
@@ -40,11 +40,6 @@ struct call_traits<'s'> {
     static PyObject* from_string(std::string& value) {
         return PyString_FromStringAndSize(value.data(), value.size());
     }
-
-    // Convert std::strings to char*s
-    static const char* to_bytes(std::string& value) {
-        return value.c_str();
-    }
 };
 #endif
 
@@ -63,11 +58,6 @@ struct call_traits<'y'> {
     // Create PyString from underlying char array
     static PyObject* from_string(std::string& value) {
         return PyUnicode_FromStringAndSize(value.data(), value.size());
-    }
-
-    // Convert std::strings to char*s
-    static const char* to_bytes(std::string& value) {
-        return value.c_str();
     }
 };
 #endif
@@ -135,11 +125,6 @@ struct call_traits<'u'> {
         free(buf);
         return ret;
     }
-
-    // just return a dummy error, because doing the locale conversion manually is complicated
-    static const char* to_bytes(std::wstring& value) {
-        return "Unspecified error";
-    }
 };
 #endif
 
@@ -162,19 +147,6 @@ struct call_traits<'U'> {
     static PyObject* from_string(std::wstring value) {
         return PyUnicode_FromWideChar(value.data(), value.size());
     }
-
-/* Python 3.5 introduced Py_EncodeLocale for converting wchar_t* to char*.
-   If we're on Python 3.4, just return a dummy error, because
-   doing the locale conversion manually is complicated. */
-#if PY_MINOR_VERSION <= 4
-    static const char* to_bytes(std::wstring& value) {
-        return "Unspecified error";
-    }
-#else
-    static const char* to_bytes(std::wstring& value) {
-        return Py_EncodeLocale(value.c_str(), NULL);
-    }
-#endif
 };
 #endif
 
@@ -309,7 +281,7 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         PyErr_SetString(PyExc_RuntimeError, e.what());
         return NULL;
     } catch (typename traits::STL_STRING_TYPE& s) {
-        PyErr_SetString(PyExc_RuntimeError, traits::to_bytes(s));
+        PyErr_SetObject(PyExc_RuntimeError, traits::from_string(s));
         return NULL;
     }
 }
