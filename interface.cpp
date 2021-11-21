@@ -8,77 +8,51 @@
 #if PY_MAJOR_VERSION == 3
     // Upgrade these types.
     #define PyString_FromString PyUnicode_FromString
+    #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
     #define PyInt_FromLong PyLong_FromLong
 #endif
 
-#if PY_MAJOR_VERSION == 2
-    #define UNICODESTRING_FORMAT_SYMBOL 'u'
-    #define BYTESTRING_FORMAT_SYMBOL 's'
-#else
-    #define UNICODESTRING_FORMAT_SYMBOL 'U'
-    #define BYTESTRING_FORMAT_SYMBOL 'y'
-#endif
+struct BytesShim {
+    // PyArg_ParseTuple for 's' (Py2) or 'y' (Py3) gives a 'char*',
+    // and we'll convert that to a std::string using a cast operator.
 
-// template traits class
-template <char FMTSPEC>
-struct call_traits {
-};
+    #if PY_MAJOR_VERSION == 2
+    static const char PyArgFormat = 's';
+    #endif
 
-#if PY_MAJOR_VERSION == 2
-// Python 2 string
-template <>
-struct call_traits<'s'> {
-    // PyArg_ParseTuple for 's' gives a 'char*', and we'll
-    // convert that to a std::string using a cast operator.
+    #if PY_MAJOR_VERSION == 3
+    static const char PyArgFormat = 'y';
+    #endif
+
     typedef char* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
+    // There are no element width issues for bytes.
     static bool check_width(char* value) {
         return true;
     }
 
     // Use the operator cast to convert char*s to std::strings.
-    static std::string to_string(char* value) { return (std::string)value; }
+    static std::string to_string(char* value) {
+        return (std::string)value;
+    }
 
     // Create PyString from underlying char array
     static PyObject* from_string(std::string& value) {
         return PyString_FromStringAndSize(value.data(), value.size());
     }
 };
-#endif
 
-#if PY_MAJOR_VERSION == 3
-// Python 3 bytes
-template <>
-struct call_traits<'y'> {
-    // PyArg_ParseTuple for 'y' gives a 'char*', and we'll
-    // convert that to a std::string using a cast operator.
-    typedef char* PY_ARG_TYPE;
-    typedef std::string STL_STRING_TYPE;
-
-    static bool check_width(char* value) {
-        return true;
-    }
-
-    // Use the operator cast to convert char*s to std::strings.
-    static std::string to_string(char* value) { return (std::string)value; }
-
-    // Create PyString from underlying char array
-    static PyObject* from_string(std::string& value) {
-        return PyUnicode_FromStringAndSize(value.data(), value.size());
-    }
-};
-#endif
 
 #if PY_MAJOR_VERSION == 2
 // Python 2 unicode
-template <>
-struct call_traits<'u'> {
+struct UnicodeShim {
     // PyArg_ParseTuple for 'u' gives a 'Py_UNICODE*'. That's a
     // typedef for wchar_t, unsigned short (UCS2) or unsigned long (UCS4).
     // On Ubuntu, it seems to be a typedef for wchar_t.
     // On Macs, the default build has it as a typedef for UCS2 (a "narrow" build).
     // With Python 3.3 and forward, it is always a typedef for wchar_t.
+    static const char PyArgFormat = 'u';
     typedef Py_UNICODE* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
@@ -143,9 +117,9 @@ struct call_traits<'u'> {
 #endif
 
 #if PY_MAJOR_VERSION == 3
-// Python 3.3+ unicode
-template <>
-struct call_traits<'U'> {
+// Python 3.5+ unicode
+struct UnicodeShim {
+    static const char PyArgFormat = 'U';
     typedef PyObject* PY_ARG_TYPE;
     typedef std::wstring STL_STRING_TYPE;
 
@@ -173,12 +147,11 @@ struct call_traits<'U'> {
 
 // COMPUTATIONAL FUNCTIONS
 
-template <char FMTSPEC>
+template <class Shim>
 static PyObject *
 diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    typedef call_traits<FMTSPEC> traits;
-    typename traits::PY_ARG_TYPE a, b;
+    typename Shim::PY_ARG_TYPE a, b;
     float timelimit = 0.0;
     int checklines = 1;
     char* cleanupMode = NULL;
@@ -196,7 +169,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("as_patch"),
         NULL };
 
-    sprintf(format_spec, "%c%c|fbzbbb", FMTSPEC, FMTSPEC);
+    sprintf(format_spec, "%c%c|fbzbbb", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &a, &b,
                                      &timelimit, &checklines, &cleanupMode,
@@ -210,14 +183,14 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     // and the diff will return insertion/deletion counts
     // that don't line up with the input string. Raise an
     // exception if this would occur.
-    if (!traits::check_width(a) || !traits::check_width(b)) {
+    if (!Shim::check_width(a) || !Shim::check_width(b)) {
         PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
         return NULL;
     }
 
     PyObject *ret = PyList_New(0);
 
-    typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
+    typedef diff_match_patch<typename Shim::STL_STRING_TYPE> DMP;
     DMP dmp;
 
     PyObject *opcodes[3];
@@ -230,7 +203,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_BEGIN_ALLOW_THREADS /* RELEASE THE GIL */
 
     dmp.Diff_Timeout = timelimit;
-    diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
+    diff = dmp.diff_main(Shim::to_string(a), Shim::to_string(b), checklines);
 
     if (cleanupMode == NULL || strcmp(cleanupMode, "Semantic") == 0)
         dmp.diff_cleanupSemantic(diff);
@@ -240,10 +213,10 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     Py_END_ALLOW_THREADS /* ACQUIRE THE GIL */
 
     if (as_patch) {
-        typename DMP::Patches patch = dmp.patch_make(traits::to_string(a), diff);
-        typename traits::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
+        typename DMP::Patches patch = dmp.patch_make(Shim::to_string(a), diff);
+        typename Shim::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
 
-        return traits::from_string(patch_str);
+        return Shim::from_string(patch_str);
     }
 
     typename std::list<typename DMP::Diff>::const_iterator entryiter;
@@ -258,7 +231,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         if (counts_only)
             PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
         else
-            PyTuple_SetItem(tuple, 1, traits::from_string(entry.text));
+            PyTuple_SetItem(tuple, 1, Shim::from_string(entry.text));
 
         PyList_Append(ret, tuple);
         Py_DECREF(tuple); // the list owns a reference now
@@ -272,12 +245,11 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
-template <char FMTSPEC>
+template <class Shim>
 static PyObject *
 diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    typedef call_traits<FMTSPEC> traits;
-    typename traits::PY_ARG_TYPE pattern, text;
+    typename Shim::PY_ARG_TYPE pattern, text;
     int loc;
     int match_distance = 1000;
     int match_maxbits = 32;
@@ -293,19 +265,19 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         strdup("match_threshold"),
         NULL };
 
-    sprintf(format_spec, "%c%ci|iif", FMTSPEC, FMTSPEC);
+    sprintf(format_spec, "%c%ci|iif", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
                                      &pattern, &text, &loc,
                                      &match_distance, &match_maxbits, &match_threshold)) {
         return NULL;
     }
 
-    if (!traits::check_width(pattern) || !traits::check_width(text)) {
+    if (!Shim::check_width(pattern) || !Shim::check_width(text)) {
         PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
         return NULL;
     }
 
-    typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
+    typedef diff_match_patch<typename Shim::STL_STRING_TYPE> DMP;
     DMP dmp;
 
     dmp.Match_Distance = match_distance;
@@ -313,13 +285,13 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     dmp.Match_Threshold = match_threshold;
 
     try {
-        int index = dmp.match_main(traits::to_string(pattern), traits::to_string(text), loc);
+        int index = dmp.match_main(Shim::to_string(pattern), Shim::to_string(text), loc);
         return Py_BuildValue("i", index);
     } catch (std::exception& e) {
         PyErr_SetString(PyExc_RuntimeError, e.what());
         return NULL;
-    } catch (typename traits::STL_STRING_TYPE& s) {
-        PyErr_SetObject(PyExc_RuntimeError, traits::from_string(s));
+    } catch (typename Shim::STL_STRING_TYPE& s) {
+        PyErr_SetObject(PyExc_RuntimeError, Shim::from_string(s));
         return NULL;
     }
 }
@@ -334,8 +306,8 @@ diff_match_patch__diff(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject* first_arg;
     if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
         if (PyUnicode_Check(first_arg))
-            return diff_match_patch__diff__impl<UNICODESTRING_FORMAT_SYMBOL>(self, args, kwargs);
-    return diff_match_patch__diff__impl<BYTESTRING_FORMAT_SYMBOL>(self, args, kwargs);
+            return diff_match_patch__diff__impl<UnicodeShim>(self, args, kwargs);
+    return diff_match_patch__diff__impl<BytesShim>(self, args, kwargs);
 }
 
 static PyObject *
@@ -346,8 +318,8 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject* first_arg;
     if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
         if (PyUnicode_Check(first_arg))
-            return diff_match_patch__match__impl<UNICODESTRING_FORMAT_SYMBOL>(self, args, kwargs);
-    return diff_match_patch__match__impl<BYTESTRING_FORMAT_SYMBOL>(self, args, kwargs);
+            return diff_match_patch__match__impl<UnicodeShim>(self, args, kwargs);
+    return diff_match_patch__match__impl<BytesShim>(self, args, kwargs);
 }
 
 // EXTENSION MODULE METADATA
@@ -365,7 +337,7 @@ PyMODINIT_FUNC
 initfast_diff_match_patch(void)
 {
     auto module = Py_InitModule("fast_diff_match_patch", MyMethods);
-    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(call_traits<UNICODESTRING_FORMAT_SYMBOL>::STL_STRING_TYPE::value_type));
+    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(UnicodeShim::STL_STRING_TYPE::value_type));
 }
 #endif
 
@@ -383,7 +355,7 @@ PyMODINIT_FUNC
 PyInit_fast_diff_match_patch(void)
 {
     auto module = PyModule_Create(&mymodule);
-    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(call_traits<UNICODESTRING_FORMAT_SYMBOL>::STL_STRING_TYPE::value_type));
+    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(UnicodeShim::STL_STRING_TYPE::value_type));
     return module;
 }
 #endif
