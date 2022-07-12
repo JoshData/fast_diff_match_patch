@@ -77,6 +77,7 @@ Changes in version 2.0.0
 * The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/ and the package name has been updated to match the import name.
 * In previous versions of this package, separate `diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
 methods were available. They have been merged into a single `diff` method that checks the type of the arguments passed.)
+* `cleanup_semantic` has been renamed to `cleanup`, which takes one of three options (see above)
 * On Windows, an exception will be thrown if a string has characters outside of the Basic Multilingual Plane.
 
 Building from source
