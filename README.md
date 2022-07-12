@@ -71,8 +71,15 @@ The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
 
 
-Changes in version 2.0.0
-------------------------
+Changelog
+---------
+
+### Version 2.0.1
+
+* Diffs of byte strings are now null-character-safe.
+* Fixed `as_patch` argument.
+
+### Version 2.0.0
 
 * The import has been renamed from `diff_match_patch` to `fast_diff_match_patch` to avoid an import naming collision with https://pypi.org/project/diff-match-patch/ and the package name has been updated to match the import name.
 * In previous versions of this package, separate `diff_bytes` (Py3), `diff_unicode` and `diff_str` (Py2)
