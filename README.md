@@ -98,17 +98,18 @@ Then build/install the binary module using:
 For package maintainers
 -----------------------
 
-To build everything:
+To build everything (for testing):
 
     git submodule update && rm -rf build && python3 setup.py build
 
 To test without installing:
 
-    PYTHONPATH=build/lib.linux-x86_64-3.9/ python3 -m unittest
+    PYTHONPATH=build/lib.linux-x86_64-*/ python3 -m unittest
 
 To upload a new release to PyPi:
 
 * Install twine: `python3 -m pip install --upgrade twine`
 * manylinux wheels are built automatically on GitHub Actions.
 * Download the artifact and extract the files to a new directory.
-* Upload them: `python3 -m twine upload path-to-artifact-files/*`
+* Upload them: `python3 -m twine upload path-to-artifact-files/*`. Username: `__token__`; Password: A PyPi API token.
+
