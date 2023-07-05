@@ -248,6 +248,64 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 
 template <class Shim>
 static PyObject *
+diff_match_patch__diff_count__impl(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    typename Shim::PY_ARG_TYPE a, b;
+    float timelimit = 0.0;
+    int checklines = 1;
+    char format_spec[64];
+    int max_diff = -1;
+
+    static char *kwlist[] = {
+        strdup("left_document"),
+        strdup("right_document"),
+        strdup("timelimit"),
+        strdup("checklines"),
+        strdup("max_diff"),
+        NULL };
+
+    sprintf(format_spec, "%s%s|fbi", Shim::PyArgFormat, Shim::PyArgFormat);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
+                                     &a, &b,
+                                     &timelimit, &checklines, &max_diff))
+        return NULL;
+    
+    auto a_str = Shim::to_string(a),
+         b_str = Shim::to_string(b);
+
+    // On Windows, wstring is based on the two-byte wchar_t,
+    // which is smaller than the four-byte Py_UCS4 that is
+    // the basis for Python strings. As a result, high-code-point
+    // characters will be split into two wchar_t characters,
+    // and the diff will return insertion/deletion counts
+    // that don't line up with the input string. Raise an
+    // exception if this would occur.
+    if (!Shim::check_width(a) || !Shim::check_width(b)) {
+        PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
+        return NULL;
+    }
+
+    typedef diff_match_patch<typename Shim::STL_STRING_TYPE> DMP;
+    DMP dmp;
+
+    PyObject *ret;
+    long long diff_count;
+
+    Py_BEGIN_ALLOW_THREADS /* RELEASE THE GIL */
+
+    dmp.Diff_Timeout = timelimit;
+    // ret = PyLong_FromLongLong(diff_count);
+    diff_count = dmp.diff_main_only_count(a_str, b_str, checklines, max_diff);
+
+    Py_END_ALLOW_THREADS /* ACQUIRE THE GIL */
+
+    ret = Py_BuildValue("L", diff_count);
+
+    return ret;
+}
+
+template <class Shim>
+static PyObject *
 diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     typename Shim::PY_ARG_TYPE pattern, text;
@@ -315,6 +373,18 @@ diff_match_patch__diff(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 static PyObject *
+diff_match_patch__diff_count(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    // Check if the first argument is a Unicode object, and if so, run
+    // the Unicode version of the method. Otherwise run the bytes version.
+    PyObject* first_arg;
+    if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
+        if (PyUnicode_Check(first_arg))
+            return diff_match_patch__diff_count__impl<UnicodeShim>(self, args, kwargs);
+    return diff_match_patch__diff_count__impl<BytesShim>(self, args, kwargs);
+}
+
+static PyObject *
 diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     // Check if the first argument is a Unicode object, and if so, run
@@ -330,6 +400,8 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
 
 static PyMethodDef MyMethods[] = {
     {"diff", (PyCFunction)diff_match_patch__diff, METH_VARARGS|METH_KEYWORDS,
+    "Compute the difference between two strings or bytes-like objects (Unicode and str's in Python 2). Returns a list of tuples (OP, LEN)."},
+    {"diff_count", (PyCFunction)diff_match_patch__diff_count, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings or bytes-like objects (Unicode and str's in Python 2). Returns a list of tuples (OP, LEN)."},
     {"match_main", (PyCFunction)diff_match_patch__match, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
