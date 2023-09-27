@@ -114,10 +114,11 @@ To test without installing:
 
     PYTHONPATH=build/lib.linux-x86_64-*/ python3 -m unittest
 
-To upload a new release to PyPi:
+Release packages (wheels and a source distribution) are built using GitHub Actions
+in this repository. To upload them as a new release to PyPi, download the artifact
+and extract the files to a new directory, and:
 
-* Install twine: `python3 -m pip install --upgrade twine`
-* manylinux wheels are built automatically on GitHub Actions.
-* Download the artifact and extract the files to a new directory.
-* Upload them: `python3 -m twine upload path-to-artifact-files/*`. Username: `__token__`; Password: A PyPi API token.
-
+```sh
+python3 -m pip install --upgrade twine
+python3 -m twine upload -u __token__ path-to-artifact-files/*
+```
