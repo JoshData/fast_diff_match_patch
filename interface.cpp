@@ -6,7 +6,7 @@
 struct BytesShim {
     static const char* PyArgFormat; // set below
     typedef Py_buffer PY_ARG_TYPE;
-    typedef std::string STL_STRING_TYPE;
+    typedef std::wstring STL_STRING_TYPE;
 
     // There are no element width issues for bytes.
     static bool check_width(const Py_buffer& value) {
@@ -14,18 +14,20 @@ struct BytesShim {
     }
 
     // Extract the bytes data.
-    static std::string to_string(Py_buffer& value) {
+    static std::wstring to_string(Py_buffer& value) {
         auto buffer = (char*)malloc(value.len + 1);
         PyBuffer_ToContiguous(buffer, &value, value.len, 'C');
         PyBuffer_Release(&value);
-        auto s = std::string(buffer, value.len);
+        auto s = std::wstring(buffer, buffer + value.len);
         free(buffer);
         return s;
     }
 
     // Create PyString from underlying char array
-    static PyObject* from_string(std::string& value) {
-        return PyBytes_FromStringAndSize(value.data(), value.size());
+    static PyObject* from_string(std::wstring& value) {
+        // Assumes the string only contains bytes-like values.
+        std::string narrowed(value.begin(), value.end());
+        return PyBytes_FromStringAndSize(narrowed.data(), narrowed.size());
     }
 };
 
