@@ -52,6 +52,23 @@ class DiffTests(unittest.TestCase):
             ]
         )
 
+        self.assertDiff(
+            'this\nis\na\ntest',
+            'this\nprogram\nis\nnot \u2192 a\ntest',
+            [
+                ('=', 'this\n'),
+                ('-', 'is\n'),
+                ('+', 'program\nis\nnot \u2192 '),
+                ('=', 'a\ntest'),
+            ],
+            [
+                ('=', 5),
+                ('-', 3),
+                ('+', 17),
+                ('=', 6),
+            ]
+        )
+
     def test_binary(self):
         self.assertDiff(
             b'',
@@ -126,11 +143,39 @@ class DiffTests(unittest.TestCase):
 
     def test_patch(self):
         actual = fast_diff_match_patch.diff(
-            "Text 1",
-            "Text 2",
+            "Text 1\nLine 1\nLine 2\nLine 3",
+            "Text 2\nLine 1\nLine 3\nLine 2",
             as_patch=True)
-        self.assertEqual(actual, """@@ -2,5 +2,5 @@
- ext 
+        self.assertEqual(actual, """@@ -1,14 +1,14 @@
+ Text 
 -1
++2
+ %0ALine 1%0A
+@@ -16,12 +16,12 @@
+ ine 
+-2
++3
+ %0ALine 
+-3
++2
+""")
+
+
+    def test_patch_binary(self):
+        actual = fast_diff_match_patch.diff(
+            b"Text 1\nLine 1\nLine 2\nLine 3",
+            b"Text 2\nLine 1\nLine 3\nLine 2",
+            as_patch=True)
+        self.assertEqual(actual, b"""@@ -1,14 +1,14 @@
+ Text 
+-1
++2
+ %0ALine 1%0A
+@@ -16,12 +16,12 @@
+ ine 
+-2
++3
+ %0ALine 
+-3
 +2
 """)
