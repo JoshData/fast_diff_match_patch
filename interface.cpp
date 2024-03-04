@@ -3,14 +3,6 @@
 
 #include "diff-match-patch-cpp-stl/diff_match_patch.h"
 
-/* Shims for Python 2 / Python 3 */
-
-#if PY_MAJOR_VERSION == 3
-    // Upgrade these types.
-    #define PyString_FromString PyUnicode_FromString
-    #define PyInt_FromLong PyLong_FromLong
-#endif
-
 struct BytesShim {
     static const char* PyArgFormat; // set below
     typedef Py_buffer PY_ARG_TYPE;
@@ -39,82 +31,6 @@ struct BytesShim {
 
 const char* BytesShim::PyArgFormat = "s*";
 
-
-#if PY_MAJOR_VERSION == 2
-// Python 2 unicode
-struct UnicodeShim {
-    // PyArg_ParseTuple for 'u' gives a 'Py_UNICODE*'. That's a
-    // typedef for wchar_t, unsigned short (UCS2) or unsigned long (UCS4).
-    // On Ubuntu, it seems to be a typedef for wchar_t.
-    // On Macs, the default build has it as a typedef for UCS2 (a "narrow" build).
-    // With Python 3.3 and forward, it is always a typedef for wchar_t.
-    static const char* PyArgFormat; // set below
-    typedef Py_UNICODE* PY_ARG_TYPE;
-    typedef std::wstring STL_STRING_TYPE;
-
-    static bool check_width(Py_UNICODE* value) {
-        // There's no fast way to check that all characters are within
-        // bounds, so we'll skip the check.
-        return true;
-    }
-
-    // Convert Py_UNICODE* to std::wstring....
-    static std::wstring to_string(Py_UNICODE* value) {
-        // If Py_UNICODE is the same width as wchar_t, then just do a few casts.
-        // Hopefully wchar_t is unsigned, but it may not matter anyway. When
-        // Py_UNICODE actually *is* wchar_t, the casts are unnecessary, but we
-        // want this to compile in other environments as well.
-        if (sizeof(Py_UNICODE) == sizeof(wchar_t))
-            return (std::wstring)(wchar_t*)value;
-
-        // In other cases, cast each character to wchar_t. Technically this
-        // means that when a surrogate pair appears in the UTF-16 source, we
-        // will treat it as two "unpaired surrogate" codepoints, which are
-        // illegal in UTF-32. But the library doesn't care, and we will just be
-        // converting back to UTF-16 later.
-        //
-        // There is a risk that the unpaired surrogates will end up in
-        // different diff blocks, but this is par for the course for narrow
-        // builds of Python. (difflib has the same problem.)
-        size_t len = 0;
-        while (value[len] != 0)
-            len++;
-        wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-        assert(buf);
-        buf[len] = '\0';
-        for (size_t i = 0; i < len; i++)
-            buf[i] = (wchar_t)value[i];
-        std::wstring ret = (std::wstring)buf;
-        free(buf);
-        return ret;
-    }
-
-    static PyObject* from_string(std::wstring value) {
-        // Wide build--just cast underlying char_t array.
-        if (sizeof(Py_UNICODE) == sizeof(wchar_t))
-            return PyUnicode_FromUnicode((Py_UNICODE*)value.data(), value.size());
-
-        // Narrow build--cast to 16-bit. This is not the normal way to convert
-        // UTF-32 to UTF-16, but since we got the wstring by casting UTF-16
-        // chars it is fine in this case (modulo the unpaired surrogate issues
-        // which we are intentionally not addressing here--see comments in
-        // to_string).
-        size_t len = value.size();
-        Py_UNICODE* buf = (Py_UNICODE*)malloc(sizeof(Py_UNICODE) * (len + 1));
-        assert(buf);
-        buf[len] = '\0';
-        for (size_t i = 0; i < len; i++)
-            buf[i] = (Py_UNICODE)value[i];
-        PyObject* ret = PyUnicode_FromUnicode(buf, len);
-        free(buf);
-        return ret;
-    }
-};
-const char* UnicodeShim::PyArgFormat = "u";
-#endif
-
-#if PY_MAJOR_VERSION == 3
-// Python 3.5+ unicode
 struct UnicodeShim {
     static const char* PyArgFormat; // set below
     typedef PyObject* PY_ARG_TYPE;
@@ -141,7 +57,6 @@ struct UnicodeShim {
     }
 };
 const char* UnicodeShim::PyArgFormat = "U";
-#endif
 
 // COMPUTATIONAL FUNCTIONS
 
@@ -195,9 +110,9 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     DMP dmp;
 
     PyObject *opcodes[3];
-    opcodes[dmp.DELETE] = PyString_FromString("-");
-    opcodes[dmp.INSERT] = PyString_FromString("+");
-    opcodes[dmp.EQUAL] = PyString_FromString("=");
+    opcodes[dmp.DELETE] = PyUnicode_FromString("-");
+    opcodes[dmp.INSERT] = PyUnicode_FromString("+");
+    opcodes[dmp.EQUAL] = PyUnicode_FromString("=");
 
     typename DMP::Diffs diff;
 
@@ -230,7 +145,7 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
         PyTuple_SetItem(tuple, 0, opcodes[entry.operation]);
 
         if (counts_only)
-            PyTuple_SetItem(tuple, 1, PyInt_FromLong(entry.text.length()));
+            PyTuple_SetItem(tuple, 1, PyLong_FromLong(entry.text.length()));
         else
             PyTuple_SetItem(tuple, 1, Shim::from_string(entry.text));
 
@@ -330,22 +245,12 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
 
 static PyMethodDef MyMethods[] = {
     {"diff", (PyCFunction)diff_match_patch__diff, METH_VARARGS|METH_KEYWORDS,
-    "Compute the difference between two strings or bytes-like objects (Unicode and str's in Python 2). Returns a list of tuples (OP, LEN)."},
+    "Compute the difference between two strings or bytes. Returns a list of tuples (OP, LEN)."},
     {"match_main", (PyCFunction)diff_match_patch__match, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-#if PY_MAJOR_VERSION == 2
-PyMODINIT_FUNC
-initfast_diff_match_patch(void)
-{
-    auto module = Py_InitModule("fast_diff_match_patch", MyMethods);
-    PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(UnicodeShim::STL_STRING_TYPE::value_type));
-}
-#endif
-
-#if PY_MAJOR_VERSION == 3
 static struct PyModuleDef mymodule = {
    PyModuleDef_HEAD_INIT,
    "fast_diff_match_patch",   /* name of module */
@@ -362,4 +267,3 @@ PyInit_fast_diff_match_patch(void)
     PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(UnicodeShim::STL_STRING_TYPE::value_type));
     return module;
 }
-#endif

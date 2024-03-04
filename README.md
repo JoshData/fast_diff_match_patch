@@ -17,9 +17,6 @@ the standard C++ library classes instead, making it more portable.
 That's at https://github.com/leutloff/diff-match-patch-cpp-stl. This
 package uses that library.
 
-(This package can hopefully still be built for Python 2.7 also but a
-pre-built package is not available.)
-
 Example
 -------
 
@@ -38,7 +35,7 @@ Then write (this is Python 3):
         if op == "=": print ("next", length, "characters are in common")
         if op == "+": print ("next", length, "characters are inserted")
 
-The two textual arguments can be either strings or bytes (Unicode or str on Python 2.x).
+The two textual arguments can be either strings or bytes.
 
 Some keyword arguments are also available:
 
