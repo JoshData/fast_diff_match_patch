@@ -50,7 +50,7 @@ jobs:
 
       - name: Build source distribution
         run: |
-          pip install twine
+          pip install setuptools twine
           python setup.py sdist
           # Check whether the source distribution will render correctly
           twine check dist/*.tar.gz
