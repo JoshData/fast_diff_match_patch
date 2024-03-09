@@ -173,8 +173,8 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     char format_spec[64];
 
     static char *kwlist[] = {
-        strdup("pattern"),
         strdup("text"),
+        strdup("pattern"),
         strdup("loc"),
         strdup("match_distance"),
         strdup("match_maxbits"),
@@ -183,7 +183,7 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 
     sprintf(format_spec, "%s%si|iif", Shim::PyArgFormat, Shim::PyArgFormat);
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
-                                     &pattern, &text, &loc,
+                                     &text, &pattern, &loc,
                                      &match_distance, &match_maxbits, &match_threshold)) {
         return NULL;
     }
@@ -204,7 +204,7 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
     dmp.Match_Threshold = match_threshold;
 
     try {
-        int index = dmp.match_main(pattern_str, text_str, loc);
+        int index = dmp.match_main(text_str, pattern_str, loc);
         return Py_BuildValue("i", index);
     } catch (std::exception& e) {
         PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -246,7 +246,7 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyMethodDef MyMethods[] = {
     {"diff", (PyCFunction)diff_match_patch__diff, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings or bytes. Returns a list of tuples (OP, LEN)."},
-    {"match_main", (PyCFunction)diff_match_patch__match, METH_VARARGS|METH_KEYWORDS,
+    {"match", (PyCFunction)diff_match_patch__match, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
