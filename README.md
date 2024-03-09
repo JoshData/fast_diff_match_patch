@@ -59,11 +59,6 @@ and the lengths of those strings.
 If `as_patch` (default `False`) is `True`, the diff is returned in patch format
 as a string.
 
-On Windows, an exception will be thrown if either of the two text strings has characters
-outside of the Basic Multilingual Plane because the native platform character type
-is a two-byte character. The `fast_diff_match_patch.CHAR_WIDTH` field, which will either
-be 2 or 4, can be used to determine whether these characters are supported ahead of time.
-
 The Global Interpreter Lock (GIL) is released while performing the diff
 so that this library can be used in a multi-threaded application.
 
