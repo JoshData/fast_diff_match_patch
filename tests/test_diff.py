@@ -6,7 +6,7 @@ import unittest
 import fast_diff_match_patch
 
 class DiffTests(unittest.TestCase):
-    def assertDiff(self, text1, text2, expected, expected_counts_only):
+    def assertDiff(self, text1, text2, expected):
         actual = fast_diff_match_patch.diff(
             text1, text2,
             timelimit=15,
@@ -18,21 +18,19 @@ class DiffTests(unittest.TestCase):
             text1, text2,
             timelimit=15,
             checklines=False)
-        self.assertEqual(actual, expected_counts_only)
+        self.assertEqual(actual, [(op, len(text)) for (op, text) in expected])
 
     def test_string(self):
         self.assertDiff(
             '',
             '',
-            [],
-            [],
+            []
         )
 
         self.assertDiff(
             'this is a test',
             'this is a test',
-            [('=', 'this is a test')],
-            [('=', 14)],
+            [('=', 'this is a test')]
         )
 
         self.assertDiff(
@@ -43,12 +41,6 @@ class DiffTests(unittest.TestCase):
                 ('-', 'is'),
                 ('+', 'program is not \u2192'),
                 ('=', ' a test'),
-            ],
-            [
-                ('=', 5),
-                ('-', 2),
-                ('+', 16),
-                ('=', 7),
             ]
         )
 
@@ -60,12 +52,6 @@ class DiffTests(unittest.TestCase):
                 ('-', 'is\n'),
                 ('+', 'program\nis\nnot \u2192 '),
                 ('=', 'a\ntest'),
-            ],
-            [
-                ('=', 5),
-                ('-', 3),
-                ('+', 17),
-                ('=', 6),
             ]
         )
 
@@ -73,15 +59,13 @@ class DiffTests(unittest.TestCase):
         self.assertDiff(
             b'',
             b'',
-            [],
-            [],
+            []
         )
 
         self.assertDiff(
             b'this is a test',
             b'this is a test',
-            [('=', b'this is a test')],
-            [('=', 14)],
+            [('=', b'this is a test')]
         )
 
         self.assertDiff(
@@ -92,12 +76,6 @@ class DiffTests(unittest.TestCase):
                 ('-', b'is'),
                 ('+', b'program is not ==>'),
                 ('=', b' a test'),
-            ],
-            [
-                ('=', 5),
-                ('-', 2),
-                ('+', 18),
-                ('=', 7),
             ]
         )
 
@@ -105,15 +83,13 @@ class DiffTests(unittest.TestCase):
         self.assertDiff(
             '1\u00002',
             '1\u00003',
-            [('=', '1\x00'), ('-', '2'), ('+', '3')],
-            [('=', 2), ('-', 1), ('+', 1)],
+            [('=', '1\x00'), ('-', '2'), ('+', '3')]
         )
 
         self.assertDiff(
             b'1\0002',
             b'1\0003',
-            [('=', b'1\x00'), ('-', b'2'), ('+', b'3')],
-            [('=', 2), ('-', 1), ('+', 1)],
+            [('=', b'1\x00'), ('-', b'2'), ('+', b'3')]
         )
 
     def test_unicode_surrogate_pair(self):
@@ -125,10 +101,6 @@ class DiffTests(unittest.TestCase):
             [
                 ('-', u'\U0001f37e'),
                 ('+', u'\U0001f37f')
-            ],
-            [
-                ('-', 1),
-                ('+', 1),
             ]
         )
 
@@ -142,12 +114,6 @@ class DiffTests(unittest.TestCase):
                 ('-', '\U0001f37e'.encode("utf32")[4:5]),
                 ('+', '\U0001f37f'.encode("utf32")[4:5]),
                 ('=', '\U0001f37e'.encode("utf32")[5:8])
-            ],
-            [
-                ('=', 4),
-                ('-', 1),
-                ('+', 1),
-                ('=', 3)
             ]
         )
 
