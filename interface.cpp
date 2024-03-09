@@ -8,11 +8,6 @@ struct BytesShim {
     typedef Py_buffer PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
-    // There are no element width issues for bytes.
-    static bool check_width(const Py_buffer& value) {
-        return true;
-    }
-
     // Extract the bytes data.
     static std::string to_string(Py_buffer& value) {
         auto buffer = (char*)malloc(value.len + 1);
@@ -34,29 +29,39 @@ const char* BytesShim::PyArgFormat = "s*";
 struct UnicodeShim {
     static const char* PyArgFormat; // set below
     typedef PyObject* PY_ARG_TYPE;
-    typedef std::wstring STL_STRING_TYPE;
+    typedef std::u32string STL_STRING_TYPE;
 
-    static bool check_width(PyObject* value) {
-        // Return whether any four-byte Unicode characters exist
-        // and the platform's wchar_t type only is two bytes, e.g.
-        // on Windows.
-        return PyUnicode_MAX_CHAR_VALUE(value) <= WCHAR_MAX;
-    }
-
-    // Convert PyObject* to std::wstring....
-    static std::wstring to_string(PyObject* value) {
-        Py_ssize_t size;
-        wchar_t* str = PyUnicode_AsWideCharString(value, &size);
-        std::wstring string = std::wstring(str, size);
+    // Convert PyObject* to std::u32string....
+    static std::u32string to_string(PyObject* value) {
+        auto str = (char32_t*)PyUnicode_AsUCS4Copy(value);
+        auto string = std::u32string(str, PyUnicode_GetLength(value));
         PyMem_Free(str);
         return string;
     }
 
-    static PyObject* from_string(std::wstring value) {
-        return PyUnicode_FromWideChar(value.data(), value.size());
+    static PyObject* from_string(std::u32string value) {
+        return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, value.c_str(), value.size());
     }
 };
 const char* UnicodeShim::PyArgFormat = "U";
+
+// Specialization of the DMP traits class for char32_t for u32string.
+template <> struct diff_match_patch_traits<char32_t> : diff_match_patch_utf32_direct<char32_t> {
+  static bool is_alnum(char32_t c) { return std::iswalnum(c)? true : false; }
+  static bool is_digit(char32_t c) { return std::iswdigit(c)? true : false; }
+  static bool is_space(char32_t c) { return std::iswspace(c)? true : false; }
+  static int to_int(const char32_t* s) {
+    std::string narrowed;
+    while (*s && *s < CHAR_MAX)
+        narrowed.append(static_cast<char>(*(s++)), 1);
+    return static_cast<int>(std::strtol(narrowed.c_str(), NULL, 10));
+  }
+  static char32_t from_wchar(wchar_t c) { return (char32_t)c; }
+  static wchar_t to_wchar(char32_t c) { return c <= WCHAR_MAX ? (wchar_t)c : 0; }
+  static std::u32string cs(const wchar_t* s) { return std::u32string(s, s + wcslen(s)); }
+  static const char32_t eol = L'\n';
+  static const char32_t tab = L'\t';
+};
 
 // COMPUTATIONAL FUNCTIONS
 
@@ -91,18 +96,6 @@ diff_match_patch__diff__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 
     auto a_str = Shim::to_string(a),
          b_str = Shim::to_string(b);
-
-    // On Windows, wstring is based on the two-byte wchar_t,
-    // which is smaller than the four-byte Py_UCS4 that is
-    // the basis for Python strings. As a result, high-code-point
-    // characters will be split into two wchar_t characters,
-    // and the diff will return insertion/deletion counts
-    // that don't line up with the input string. Raise an
-    // exception if this would occur.
-    if (!Shim::check_width(a) || !Shim::check_width(b)) {
-        PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
-        return NULL;
-    }
 
     PyObject *ret = PyList_New(0);
 
@@ -190,11 +183,6 @@ diff_match_patch__match__impl(PyObject *self, PyObject *args, PyObject *kwargs)
 
     auto pattern_str = Shim::to_string(pattern),
          text_str = Shim::to_string(text);
-
-    if (!Shim::check_width(pattern) || !Shim::check_width(text)) {
-        PyErr_SetString(PyExc_RuntimeError, "String contains high-code-point characters that cannot be represented natively on this platform.");
-        return NULL;
-    }
 
     typedef diff_match_patch<typename Shim::STL_STRING_TYPE> DMP;
     DMP dmp;

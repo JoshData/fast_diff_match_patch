@@ -116,8 +116,6 @@ class DiffTests(unittest.TestCase):
             [('=', 2), ('-', 1), ('+', 1)],
         )
 
-    @unittest.skipIf(fast_diff_match_patch.CHAR_WIDTH != 4,
-                     "not supported on this platform") # strings become '\ud83c\udf7e' and '\ud83c\udf7f' on Windows
     def test_unicode_surrogate_pair(self):
         self.assertEqual(fast_diff_match_patch.CHAR_WIDTH, 4)
 
@@ -134,12 +132,24 @@ class DiffTests(unittest.TestCase):
             ]
         )
 
-    # on Windows only
-    @unittest.skipIf(fast_diff_match_patch.CHAR_WIDTH == 4,
-                     "does nothing on this platform")
-    def test_unicode_surrogate_pair_detected(self):
-        self.assertEqual(fast_diff_match_patch.CHAR_WIDTH, 2)
-        self.assertRaises(RuntimeError, lambda : fast_diff_match_patch.diff('\U0001f37e', '\U0001f37f'))
+        # Test that the byte string version also works although
+        # it won't have any surrogate pair issues.
+        self.assertDiff(
+            '\U0001f37e'.encode("utf32"),
+            '\U0001f37f'.encode("utf32"),
+            [
+                ('=', '\U0001f37e'.encode("utf32")[0:4]),
+                ('-', '\U0001f37e'.encode("utf32")[4:5]),
+                ('+', '\U0001f37f'.encode("utf32")[4:5]),
+                ('=', '\U0001f37e'.encode("utf32")[5:8])
+            ],
+            [
+                ('=', 4),
+                ('-', 1),
+                ('+', 1),
+                ('=', 3)
+            ]
+        )
 
     def test_patch(self):
         actual = fast_diff_match_patch.diff(
