@@ -7,8 +7,8 @@ module1 = Extension('fast_diff_match_patch',
 
 setup(
     name='fast_diff_match_patch',
-    version='2.0.1',
-    description=u'Exposes the C++ implementation of google-diff-match-patch to Python for fast diffs.',
+    version='2.1.0',
+    description=u'Packages the C++ implementation of google-diff-match-patch for Python for fast byte and string diffs.',
     long_description=open("README.md").read(),
     long_description_content_type='text/markdown',
     author=u'Joshua Tauberer',
