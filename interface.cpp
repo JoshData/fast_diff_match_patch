@@ -5,17 +5,12 @@
 
 struct BytesShim {
     static const char* PyArgFormat; // set below
-    typedef Py_buffer PY_ARG_TYPE;
+    typedef PyObject* PY_ARG_TYPE;
     typedef std::string STL_STRING_TYPE;
 
     // Extract the bytes data.
-    static std::string to_string(Py_buffer& value) {
-        auto buffer = (char*)malloc(value.len + 1);
-        PyBuffer_ToContiguous(buffer, &value, value.len, 'C');
-        PyBuffer_Release(&value);
-        auto s = std::string(buffer, value.len);
-        free(buffer);
-        return s;
+    static std::string to_string(PyObject* value) {
+        return std::string(PyBytes_AsString(value), PyBytes_Size(value));
     }
 
     // Create PyString from underlying char array
@@ -24,7 +19,7 @@ struct BytesShim {
     }
 };
 
-const char* BytesShim::PyArgFormat = "s*";
+const char* BytesShim::PyArgFormat = "S";
 
 struct UnicodeShim {
     static const char* PyArgFormat; // set below
@@ -210,10 +205,11 @@ diff_match_patch__diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     // Check if the first argument is a Unicode object, and if so, run
     // the Unicode version of the method. Otherwise run the bytes version.
-    PyObject* first_arg;
-    if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
-        if (PyUnicode_Check(first_arg))
-            return diff_match_patch__diff__impl<UnicodeShim>(self, args, kwargs);
+    PyObject* first_arg = PyTuple_Size(args) > 0
+        ? PyTuple_GetItem(args, 0)
+        : (kwargs ? PyDict_GetItemString(kwargs, "left_document") : NULL);
+    if (first_arg && PyUnicode_Check(first_arg))
+        return diff_match_patch__diff__impl<UnicodeShim>(self, args, kwargs);
     return diff_match_patch__diff__impl<BytesShim>(self, args, kwargs);
 }
 
@@ -222,10 +218,11 @@ diff_match_patch__match(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     // Check if the first argument is a Unicode object, and if so, run
     // the Unicode version of the method. Otherwise run the bytes version.
-    PyObject* first_arg;
-    if (PyTuple_Size(args) > 0 && (first_arg = PyTuple_GetItem(args, 0)))
-        if (PyUnicode_Check(first_arg))
-            return diff_match_patch__match__impl<UnicodeShim>(self, args, kwargs);
+    PyObject* first_arg = PyTuple_Size(args) > 0
+        ? PyTuple_GetItem(args, 0)
+        : (kwargs ? PyDict_GetItemString(kwargs, "text") : NULL);
+    if (first_arg && PyUnicode_Check(first_arg))
+        return diff_match_patch__match__impl<UnicodeShim>(self, args, kwargs);
     return diff_match_patch__match__impl<BytesShim>(self, args, kwargs);
 }
 
@@ -252,6 +249,13 @@ PyMODINIT_FUNC
 PyInit_fast_diff_match_patch(void)
 {
     auto module = PyModule_Create(&mymodule);
+    if (module == NULL)
+        return NULL;
+
+#ifdef Py_GIL_DISABLED
+    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED);
+#endif
+
     PyModule_AddIntConstant(module, "CHAR_WIDTH", sizeof(UnicodeShim::STL_STRING_TYPE::value_type));
     return module;
 }

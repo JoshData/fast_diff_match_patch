@@ -1,7 +1,11 @@
+import sysconfig
+
 from setuptools import setup, find_packages, Extension
 
 module1 = Extension('fast_diff_match_patch',
                     sources = ['interface.cpp'],
+                    define_macros = [('Py_GIL_DISABLED', '1')]
+                        if sysconfig.get_config_var('Py_GIL_DISABLED') else [],
                     include_dirs = [],
                     libraries = [])
 
@@ -27,6 +31,9 @@ setup(
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
+        'Programming Language :: Python :: 3.15',
     ],
     test_suite='tests',
 )
